@@ -713,676 +713,6 @@
     }
 
     .general-notes-title {
-      font-size:<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Планер автоматизации и MVP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* Единая цветовая система для светлой и тёмной темы без рамок и теней между блоками */
-    :root {
-      --bg: #f6f7f9;
-      --surface: #f6f7f9;
-      --control-bg: #eef0f4;
-      --text: #111827;
-      --muted: #6b7280;
-      --accent: #111827;
-      --accent-text: #ffffff;
-      --accent-soft: #10b981;
-      --accent-soft-bg: rgba(16, 185, 129, 0.14);
-      --warn-bg: rgba(245, 158, 11, 0.16);
-      --warn-text: #92400e;
-      --danger: #dc2626;
-      --divider: rgba(17, 24, 39, 0.08);
-    }
-
-    body.dark {
-      --bg: #0f1115;
-      --surface: #0f1115;
-      --control-bg: #181c24;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --accent: #f3f4f6;
-      --accent-text: #111827;
-      --accent-soft: #10b981;
-      --accent-soft-bg: rgba(16, 185, 129, 0.16);
-      --warn-bg: rgba(245, 158, 11, 0.18);
-      --warn-text: #fbbf24;
-      --danger: #f87171;
-      --divider: rgba(243, 244, 246, 0.09);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      overflow-x: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      line-height: 1.45;
-      transition: background 0.2s ease, color 0.2s ease;
-    }
-
-    .auth-shell {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .auth-card {
-      width: 100%;
-      max-width: 380px;
-      background: var(--control-bg);
-      border-radius: 16px;
-      padding: 24px;
-    }
-
-    .auth-title {
-      margin: 0 0 6px;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .auth-sub {
-      margin: 0 0 16px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .auth-field {
-      margin-bottom: 12px;
-    }
-
-    .auth-field label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 5px;
-    }
-
-    .auth-error {
-      color: var(--danger);
-      font-size: 12px;
-      margin-bottom: 10px;
-      min-height: 18px;
-    }
-
-    .planner-shell {
-      display: none;
-      width: 100%;
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 18px 20px 48px;
-      background: var(--surface);
-    }
-
-    .workspace {
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-      width: 100%;
-    }
-
-    /* Три горизонтальные колонки сверху без карточных рамок и теней */
-    .top-columns {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 24px;
-      align-items: start;
-      width: 100%;
-    }
-
-    @media (max-width: 1024px) {
-      .top-columns {
-        grid-template-columns: 1fr;
-        gap: 24px;
-      }
-
-      .planner-shell {
-        padding: 16px 14px 40px;
-      }
-    }
-
-    .section-block {
-      background: transparent;
-      padding: 4px 2px;
-      min-width: 0;
-    }
-
-    .section-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
-
-    .section-title {
-      margin: 0;
-      font-size: 17px;
-      font-weight: 700;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .badge.more {
-      background: var(--accent-soft-bg);
-      color: #059669;
-    }
-
-    body.dark .badge.more {
-      color: #34d399;
-    }
-
-    .badge.less {
-      background: var(--warn-bg);
-      color: var(--warn-text);
-    }
-
-    .counter {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .subtitle {
-      margin: 0 0 14px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .inputs-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .inputs-row.two {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .inputs-row.contacts-form {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    @media (max-width: 640px) {
-      .inputs-row.contacts-form {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .field label {
-      display: block;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font: inherit;
-      color: var(--text);
-      outline: none;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    input[type="email"],
-    input[type="password"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 8px 10px;
-      border: none;
-      border-radius: 10px;
-      background: var(--control-bg);
-      font-size: 13px;
-    }
-
-    .auth-card input[type="email"],
-    .auth-card input[type="password"] {
-      background: var(--bg);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 64px;
-    }
-
-    button {
-      border: none;
-      background: var(--control-bg);
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: opacity 0.15s ease, background 0.15s ease;
-    }
-
-    button:hover:not(:disabled) {
-      opacity: 0.85;
-    }
-
-    button:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-
-    button.primary {
-      background: var(--accent);
-      color: var(--accent-text);
-    }
-
-    button.icon-btn {
-      padding: 7px 11px;
-      font-size: 15px;
-      line-height: 1;
-    }
-
-    .progress-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .progress-bar {
-      height: 8px;
-      background: var(--control-bg);
-      border-radius: 999px;
-      overflow: hidden;
-      margin-bottom: 14px;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--accent-soft);
-      width: 0%;
-      transition: width 0.2s ease;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .kpi {
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: var(--control-bg);
-    }
-
-    .kpi-label {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .kpi-val {
-      font-size: 16px;
-      font-weight: 700;
-      margin-top: 2px;
-    }
-
-    .kpi-sub {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .add-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .client-list,
-    .task-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .client-item,
-    .task-item {
-      background: var(--control-bg);
-      border-radius: 12px;
-      padding: 10px 12px;
-    }
-
-    .client-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .client-meta-line {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .check-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .check-label input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--accent-soft);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    /* Без зачёркивания текста */
-    .done-text {
-      text-decoration: none;
-      color: var(--muted);
-    }
-
-    .client-amount {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .client-overrides {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .client-overrides input {
-      padding: 6px 8px;
-      font-size: 12px;
-      background: var(--bg);
-    }
-
-    .client-notes-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .client-notes-grid input {
-      padding: 6px 8px;
-      font-size: 12px;
-      background: var(--bg);
-    }
-
-    .del-btn {
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      padding: 4px 6px;
-      font-size: 14px;
-    }
-
-    .del-btn:hover {
-      color: var(--danger);
-      opacity: 1;
-    }
-
-    .tabs {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .tab-btn {
-      padding: 8px 6px;
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 10px;
-      text-align: center;
-    }
-
-    .tab-btn.active {
-      background: var(--accent);
-      color: var(--accent-text);
-    }
-
-    .cat-box {
-      background: var(--control-bg);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .cat-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .link-btn {
-      border: none;
-      background: transparent;
-      padding: 0;
-      font-size: 12px;
-      color: var(--muted);
-      text-decoration: underline;
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .chip {
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      background: var(--bg);
-    }
-
-    .chip.active {
-      background: var(--accent-soft);
-      color: #ffffff;
-    }
-
-    .task-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .task-meta {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 4px;
-      padding-left: 24px;
-    }
-
-    .empty {
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      padding: 16px 10px;
-      border-radius: 12px;
-      background: var(--control-bg);
-    }
-
-    .calls-summary-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      background: var(--control-bg);
-      border-radius: 12px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
-    }
-
-    .calls-stats {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 14px;
-      font-size: 12px;
-    }
-
-    .calls-stat-item strong {
-      font-weight: 700;
-    }
-
-    .calls-goal-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-    }
-
-    .calls-goal-controls input[type="number"] {
-      width: 78px;
-      padding: 6px 8px;
-      background: var(--bg);
-      font-size: 12px;
-    }
-
-    .lead-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .leads-table-wrap {
-      width: 100%;
-      overflow-x: auto;
-      border-radius: 12px;
-      background: var(--control-bg);
-      padding: 6px;
-    }
-
-    .leads-table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 840px;
-    }
-
-    .leads-table th {
-      text-align: left;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      padding: 8px 8px;
-      border-bottom: 1px solid var(--divider);
-    }
-
-    .leads-table td {
-      padding: 6px 6px;
-      vertical-align: middle;
-    }
-
-    .leads-table td input[type="text"],
-    .leads-table td select {
-      background: var(--bg);
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-
-    .pagination-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .pagination-btns {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .phone-cell {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .call-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 9px;
-      border-radius: 9px;
-      background: var(--accent-soft);
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 600;
-      text-decoration: none;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: opacity 0.15s ease;
-    }
-
-    .call-link:hover {
-      opacity: 0.88;
-    }
-
-    .general-notes-box {
-      background: var(--control-bg);
-      border-radius: 12px;
-      padding: 12px;
-      margin-top: 14px;
-    }
-
-    .general-notes-title {
       font-size: 13px;
       font-weight: 700;
       margin: 0 0 8px;
@@ -1488,7 +818,7 @@
         <!-- 1. Объединённый блок: План продаж · Задачи, заметки и комментарии по клиентам -->
         <section class="section-block" id="salesSection">
           <div class="section-head">
-            <h2 class="section-title">План продаж</h2>
+            <h2 class="section-title">1. План продаж · Задачи, заметки и комментарии</h2>
             <span class="counter" id="salesCounter">0 / 30</span>
           </div>
           <p class="subtitle" id="salesSubtitle">Цель: 30 клиентов · 15 000 ₽ разово + 5 000 ₽/мес</p>
@@ -1555,14 +885,14 @@
           </div>
         </section>
 
-        <!-- 2. Услуги и ниши -->
+        <!-- 2. Отдел 1: Услуги и ниши -->
         <section class="section-block" id="dept1Section">
           <div class="section-head">
-            <h2 class="section-title">2.  Услуги и ниши</h2>
+            <h2 class="section-title">2. Отдел 1: Услуги и ниши</h2>
             <span class="badge more">Больше времени</span>
           </div>
           <div class="section-head" style="margin-bottom: 4px;">
-            <p class="subtitle" style="margin: 0;"></p>
+            <p class="subtitle" style="margin: 0;">Чат-боты, ИИ-ассистенты/агенты, МойСклад, amoCRM, Битрикс24, 1С, задачи/календари</p>
             <span class="counter" id="dept1Counter">0/0</span>
           </div>
 
@@ -1602,14 +932,14 @@
           <div class="task-list" id="dept1TaskList"></div>
         </section>
 
-        <!-- 3. Свой MVP -->
+        <!-- 3. Отдел 2: Свой MVP -->
         <section class="section-block" id="dept2Section">
           <div class="section-head">
-            <h2 class="section-title">3. Свой MVP</h2>
+            <h2 class="section-title">3. Отдел 2: Свой MVP</h2>
             <span class="badge less">Меньше времени</span>
           </div>
           <div class="section-head" style="margin-bottom: 10px;">
-            <p class="subtitle" style="margin: 0;"></p>
+            <p class="subtitle" style="margin: 0;">Чаты, ИИ-агенты, CRM, склад/финансы, задачи, календари, заметки, напоминания</p>
             <span class="counter" id="dept2Counter">0/0</span>
           </div>
 
@@ -1754,6 +1084,20 @@
 
     const STORAGE_KEY = "automation_mvp_planner_v1";
 
+    const TASKS_11_SEED = [
+      "1. Разобраться с bitrix24",
+      "2. Разобраться с amocrm",
+      "3. Разобраться с мой склад",
+      "4. Разобраться с r-keeper",
+      "5. Разобраться с iiko",
+      "6. Разобраться с 1С",
+      "7. Составить прайс-лист и чек-листы, шпаргалки; автоматизировать процессы, рутину с ии",
+      "8. Связаться со специалистами по автоматизации и учёту",
+      "9. Связаться со специалистами по продажам",
+      "10. Связаться со специалистами по продвижению",
+      "11. Начать оказывать услуги и продавать, чтобы как минимум на 150.000 рублей в месяц выйти на ведении + разово еще зарабатывать"
+    ];
+
     const DEFAULT_STATE = {
       theme: "light",
       updatedAt: "2026-11-25T00:00:00.000Z",
@@ -1791,43 +1135,13 @@
           "Недвижимость",
           "Онлайн-школы"
         ],
-        tasks: [
-          {
-            id: "d1-7",
-            title: "7. Составить прайс-лист и чек-листы",
-            mode: "general",
-            category: "Общие задачи",
-            done: false
-          },
-          {
-            id: "d1-8",
-            title: "8. Связаться со специалистами по автоматизации и учёту",
-            mode: "general",
-            category: "Общие задачи",
-            done: false
-          },
-          {
-            id: "d1-9",
-            title: "9. Связаться со специалистами по продажам",
-            mode: "general",
-            category: "Общие задачи",
-            done: false
-          },
-          {
-            id: "d1-10",
-            title: "10. Связаться со специалистами по продвижению",
-            mode: "general",
-            category: "Общие задачи",
-            done: false
-          },
-          {
-            id: "d1-11",
-            title: "11. Начать оказывать услуги и продавать, чтобы как минимум на 150.000 рублей в месяц выйти на ведении + разово еще зарабатывать",
-            mode: "general",
-            category: "Общие задачи",
-            done: false
-          }
-        ]
+        tasks: TASKS_11_SEED.map((title, i) => ({
+          id: `d1-seed-${i + 1}`,
+          title,
+          mode: "general",
+          category: "Общие задачи",
+          done: false
+        }))
       },
       dept2: {
         tasks: [
@@ -1845,6 +1159,7 @@
     let pendingConfirmCallback = null;
     let currentSession = null;
     let realtimeChannel = null;
+    let dragState = { listId: null, taskId: null };
 
     function cloneDefault() {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -1858,6 +1173,39 @@
 
     function buildLeadSearchText(l) {
       return `${l.fio} ${l.company} ${l.phone} ${l.callNote} ${l.comment} ${l.task}`.toLowerCase();
+    }
+
+    function applySeed11ToDept1(tasks) {
+      const list = Array.isArray(tasks) ? [...tasks] : [];
+      const prefixMap = new Map();
+      list.forEach((t, idx) => {
+        const m = String(t.title || "").trim().match(/^(\d{1,2})\./);
+        if (m) prefixMap.set(Number(m[1]), idx);
+      });
+
+      TASKS_11_SEED.forEach((fullTitle, i) => {
+        const num = i + 1;
+        if (prefixMap.has(num)) {
+          const existingIdx = prefixMap.get(num);
+          list[existingIdx] = {
+            ...list[existingIdx],
+            title: fullTitle,
+            mode: list[existingIdx].mode || "general",
+            category: list[existingIdx].mode === "general" ? "Общие задачи" : (list[existingIdx].category || "Общие задачи"),
+            done: Boolean(list[existingIdx].done)
+          };
+        } else {
+          list.push({
+            id: `d1-seed-${num}`,
+            title: fullTitle,
+            mode: "general",
+            category: "Общие задачи",
+            done: false
+          });
+        }
+      });
+
+      return list;
     }
 
     function normalizeState(raw) {
@@ -1875,6 +1223,24 @@
           .filter(Boolean)
           .join("\n\n");
       }
+
+      const rawDept1Tasks = Array.isArray(raw.dept1?.tasks)
+        ? raw.dept1.tasks.map((t, idx) => ({
+            id: String(t.id || `d1-${Date.now()}-${idx}`),
+            title: String(t.title || ""),
+            mode: ["industries", "general"].includes(t.mode) ? t.mode : "general",
+            category: t.mode === "general" || !t.category ? "Общие задачи" : String(t.category),
+            done: Boolean(t.done)
+          }))
+        : [];
+
+      const rawDept2Tasks = Array.isArray(raw.dept2?.tasks)
+        ? raw.dept2.tasks.map((t, idx) => ({
+            id: String(t.id || `d2-${Date.now()}-${idx}`),
+            title: String(t.title || ""),
+            done: Boolean(t.done)
+          }))
+        : base.dept2.tasks;
 
       return {
         theme: raw.theme === "dark" ? "dark" : "light",
@@ -1933,24 +1299,10 @@
           industries: Array.isArray(raw.dept1?.industries) && raw.dept1.industries.length
             ? raw.dept1.industries.map(String)
             : base.dept1.industries,
-          tasks: Array.isArray(raw.dept1?.tasks)
-            ? raw.dept1.tasks.map((t, idx) => ({
-                id: String(t.id || `d1-${Date.now()}-${idx}`),
-                title: String(t.title || ""),
-                mode: ["industries", "general"].includes(t.mode) ? t.mode : "specialists",
-                category: t.mode === "general" ? "Общие задачи" : String(t.category || "Общее"),
-                done: Boolean(t.done)
-              }))
-            : base.dept1.tasks
+          tasks: applySeed11ToDept1(rawDept1Tasks)
         },
         dept2: {
-          tasks: Array.isArray(raw.dept2?.tasks)
-            ? raw.dept2.tasks.map((t, idx) => ({
-                id: String(t.id || `d2-${Date.now()}-${idx}`),
-                title: String(t.title || ""),
-                done: Boolean(t.done)
-              }))
-            : base.dept2.tasks
+          tasks: rawDept2Tasks
         }
       };
     }
@@ -2539,22 +1891,40 @@
         return;
       }
 
+      const allCategories = Array.from(
+        new Set([...state.dept1.specialists, ...state.dept1.industries, "Общие задачи"])
+      );
+
       listEl.innerHTML = filteredTasks
         .map((t) => {
-          const metaText =
-            t.mode === "general"
-              ? "Общие задачи"
-              : `${t.mode === "industries" ? "Отрасли бизнеса" : "Специалисты"} · ${t.category}`;
+          const catOptions = allCategories
+            .map(
+              (cat) =>
+                `<option value="${escapeAttr(cat)}" ${t.category === cat ? "selected" : ""}>${escapeHtml(cat)}</option>`
+            )
+            .join("");
+
           return `
-            <div class="task-item" data-task-id="${escapeAttr(t.id)}">
+            <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
               <div class="task-row">
+                <span class="drag-handle" title="Перетащить">⋮⋮</span>
                 <label class="check-label">
                   <input type="checkbox" class="d1-check" ${t.done ? "checked" : ""} />
                   <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
                 </label>
                 <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
               </div>
-              <div class="task-meta">${escapeHtml(metaText)}</div>
+              <div class="task-edit-row">
+                <input type="text" class="d1-title-edit" value="${escapeAttr(t.title)}" placeholder="Изменить задачу..." />
+                <select class="d1-mode-edit">
+                  <option value="general" ${t.mode === "general" ? "selected" : ""}>Общие задачи</option>
+                  <option value="specialists" ${t.mode === "specialists" ? "selected" : ""}>Специалисты</option>
+                  <option value="industries" ${t.mode === "industries" ? "selected" : ""}>Отрасли бизнеса</option>
+                </select>
+                <select class="d1-cat-edit" ${t.mode === "general" ? "disabled" : ""}>
+                  ${catOptions}
+                </select>
+              </div>
             </div>
           `;
         })
@@ -2583,13 +1953,17 @@
       listEl.innerHTML = tasks
         .map(
           (t) => `
-            <div class="task-item" data-task-id="${escapeAttr(t.id)}">
+            <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
               <div class="task-row">
+                <span class="drag-handle" title="Перетащить">⋮⋮</span>
                 <label class="check-label">
                   <input type="checkbox" class="d2-check" ${t.done ? "checked" : ""} />
                   <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
                 </label>
                 <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
+              </div>
+              <div class="task-edit-row mvp-edit-row">
+                <input type="text" class="d2-title-edit" value="${escapeAttr(t.title)}" placeholder="Изменить задачу MVP..." />
               </div>
             </div>
           `
@@ -3349,6 +2723,118 @@
       renderDept2();
       saveState();
     });
+
+    function syncTaskCategoryToMode(task) {
+      if (task.mode === "general") {
+        task.category = "Общие задачи";
+        return;
+      }
+      const pool = task.mode === "industries" ? state.dept1.industries : state.dept1.specialists;
+      if (!pool.includes(task.category)) {
+        task.category = pool[0] || "Общее";
+      }
+    }
+
+    function attachTaskEditingAndDrag(listId, deptKey, titleInputClass) {
+      const listEl = document.getElementById(listId);
+      if (!listEl) return;
+
+      listEl.addEventListener("input", (e) => {
+        if (!e.target.classList.contains(titleInputClass)) return;
+        const item = e.target.closest(".task-item");
+        const task = state[deptKey].tasks.find((t) => t.id === item?.dataset.taskId);
+        if (!task) return;
+        task.title = e.target.value;
+        const span = item.querySelector(".task-title-text");
+        if (span) span.textContent = task.title;
+        saveState();
+      });
+
+      if (deptKey === "dept1") {
+        listEl.addEventListener("change", (e) => {
+          const item = e.target.closest(".task-item");
+          const task = state.dept1.tasks.find((t) => t.id === item?.dataset.taskId);
+          if (!task) return;
+
+          if (e.target.classList.contains("d1-mode-edit")) {
+            task.mode = e.target.value;
+            syncTaskCategoryToMode(task);
+            renderDept1();
+            saveState();
+          } else if (e.target.classList.contains("d1-cat-edit")) {
+            task.category = e.target.value;
+            if (state.dept1.industries.includes(task.category) && task.mode !== "industries") {
+              task.mode = "industries";
+            } else if (state.dept1.specialists.includes(task.category) && task.mode !== "specialists") {
+              task.mode = "specialists";
+            }
+            renderDept1();
+            saveState();
+          }
+        });
+      }
+
+      listEl.addEventListener("dragstart", (e) => {
+        const item = e.target.closest(".task-item");
+        if (!item || ["INPUT", "SELECT", "BUTTON"].includes(e.target.tagName)) {
+          e.preventDefault();
+          return;
+        }
+        dragState = { listId, taskId: item.dataset.taskId };
+        item.classList.add("dragging");
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", item.dataset.taskId);
+        }
+      });
+
+      listEl.addEventListener("dragover", (e) => {
+        if (dragState.listId !== listId) return;
+        e.preventDefault();
+        const targetItem = e.target.closest(".task-item");
+        listEl.querySelectorAll(".task-item.drag-over").forEach((el) => {
+          if (el !== targetItem) el.classList.remove("drag-over");
+        });
+        if (targetItem && targetItem.dataset.taskId !== dragState.taskId) {
+          targetItem.classList.add("drag-over");
+        }
+      });
+
+      listEl.addEventListener("drop", (e) => {
+        if (dragState.listId !== listId) return;
+        e.preventDefault();
+        const targetItem = e.target.closest(".task-item");
+        listEl.querySelectorAll(".task-item").forEach((el) => {
+          el.classList.remove("dragging", "drag-over");
+        });
+
+        const sourceId = dragState.taskId || (e.dataTransfer ? e.dataTransfer.getData("text/plain") : "");
+        dragState = { listId: null, taskId: null };
+        if (!sourceId || !targetItem || sourceId === targetItem.dataset.taskId) return;
+
+        const tasksArr = state[deptKey].tasks;
+        const fromIdx = tasksArr.findIndex((t) => t.id === sourceId);
+        const toIdx = tasksArr.findIndex((t) => t.id === targetItem.dataset.taskId);
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        const [moved] = tasksArr.splice(fromIdx, 1);
+        tasksArr.splice(toIdx, 0, moved);
+
+        if (deptKey === "dept1") renderDept1();
+        else renderDept2();
+        saveState();
+      });
+
+      listEl.addEventListener("dragend", () => {
+        dragState = { listId: null, taskId: null };
+        listEl.querySelectorAll(".task-item").forEach((el) => {
+          el.classList.remove("dragging", "drag-over");
+        });
+      });
+    }
+
+    attachTaskEditingAndDrag("dept1TaskList", "dept1", "d1-title-edit");
+    attachTaskEditingAndDrag("dept2TaskList", "dept2", "d2-title-edit");
 
     async function initApp() {
       renderAll();
