@@ -130,22 +130,6 @@
       width: 100%;
     }
 
-    /* Нижняя сетка: слева широкая колонка Контактов, справа объединённый блок План продаж + задачи/заметки/комментарии */
-    .bottom-zones-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.15fr);
-      gap: 24px;
-      align-items: start;
-      width: 100%;
-    }
-
-    @media (max-width: 1240px) {
-      .bottom-zones-grid {
-        grid-template-columns: 1fr;
-        gap: 24px;
-      }
-    }
-
     @media (max-width: 1024px) {
       .top-columns {
         grid-template-columns: 1fr;
@@ -286,8 +270,13 @@
       transition: opacity 0.15s ease, background 0.15s ease;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       opacity: 0.85;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
     }
 
     button.primary {
@@ -627,6 +616,23 @@
       font-size: 12px;
     }
 
+    .pagination-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pagination-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .phone-cell {
       display: flex;
       align-items: center;
@@ -763,10 +769,10 @@
     <div class="workspace">
       <!-- Три горизонтальные колонки сверху -->
       <div class="top-columns">
-        <!-- 1. План продаж, задачи, заметки и комментарии -->
+        <!-- 1. Объединённый блок: План продаж · Задачи, заметки и комментарии по клиентам -->
         <section class="section-block" id="salesSection">
           <div class="section-head">
-            <h2 class="section-title">1. План продаж, задачи, заметки и комментарии</h2>
+            <h2 class="section-title">1. План продаж · Задачи, заметки и комментарии</h2>
             <span class="counter" id="salesCounter">0 / 30</span>
           </div>
           <p class="subtitle" id="salesSubtitle">Цель: 30 клиентов · 15 000 ₽ разово + 5 000 ₽/мес</p>
@@ -898,106 +904,89 @@
         </section>
       </div>
 
-      <!-- Нижний блок: Контакты и объединённый блок плана продаж + задач/заметок/комментариев -->
-      <div class="bottom-zones-grid">
-        <section class="section-block" id="contactsSection">
-          <div class="section-head">
-            <h2 class="section-title">Контакты</h2>
-            <span class="counter" id="leadsCounter">0 / 0</span>
-          </div>
-          <p class="subtitle">ФИО, компания, телефон со звонком, статус, заметки при звонке, комментарии и задача</p>
+      <!-- Блок контактов -->
+      <section class="section-block" id="contactsSection">
+        <div class="section-head">
+          <h2 class="section-title">Контакты</h2>
+          <span class="counter" id="leadsCounter">0 / 0</span>
+        </div>
+        <p class="subtitle">ФИО, компания, телефон со звонком, статус, заметки при звонке, комментарии и задача</p>
 
-          <div class="calls-summary-bar">
-            <div class="calls-stats">
-              <span class="calls-stat-item">Всего контактов: <strong id="totalContactsStat">0</strong></span>
-              <span class="calls-stat-item">Обзвонил всего: <strong id="calledContactsStat">0</strong></span>
-              <span class="calls-stat-item">План звонков: <strong id="callGoalProgressStat">0 / 0</strong></span>
-            </div>
-            <div class="calls-goal-controls">
-              <label for="callGoalInput">Нужно звонков:</label>
-              <input type="number" id="callGoalInput" min="0" step="1" />
-              <button type="button" id="resetCallsBtn">Сбросить звонки</button>
-            </div>
+        <div class="calls-summary-bar">
+          <div class="calls-stats">
+            <span class="calls-stat-item">Всего контактов: <strong id="totalContactsStat">0</strong></span>
+            <span class="calls-stat-item">Обзвонил всего: <strong id="calledContactsStat">0</strong></span>
+            <span class="calls-stat-item">План звонков: <strong id="callGoalProgressStat">0 / 0</strong></span>
           </div>
-
-          <div class="inputs-row contacts-form">
-            <input type="text" id="leadFioInput" placeholder="ФИО" />
-            <input type="text" id="leadCompanyInput" placeholder="Компания" />
-            <input type="text" id="leadPhoneInput" placeholder="Телефон (+7...)" />
-            <input type="text" id="leadCallNoteInput" placeholder="Заметки при звонке..." />
-            <input type="text" id="leadCommentInput" placeholder="Комментарии" />
-            <input type="text" id="leadTaskInput" placeholder="Задача - услуги, продукты" />
+          <div class="calls-goal-controls">
+            <label for="callGoalInput">Нужно звонков:</label>
+            <input type="number" id="callGoalInput" min="0" step="1" />
+            <button type="button" id="resetCallsBtn">Сбросить звонки</button>
           </div>
+        </div>
 
-          <div class="lead-toolbar">
-            <button type="button" class="primary" id="addLeadBtn">+ Добавить строку</button>
-            <button type="button" id="importLeadsFileBtn">Загрузить файл (CSV/TXT/JSON/VCF)</button>
-            <input type="file" id="leadsFileInput" accept=".csv,.txt,.json,.vcf,text/csv,text/plain,application/json,text/vcard" hidden />
-            <button type="button" id="toggleBulkLeadsBtn">Вставить списком</button>
-            <input type="text" id="leadSearchInput" placeholder="Поиск по таблице..." style="max-width: 190px;" />
-            <select id="leadFilterSelect" style="max-width: 205px;">
-              <option value="all">Все статусы</option>
-              <option value="called">Позвонил</option>
-              <option value="not_called">Не позвонил</option>
-              <option value="bought">Купил / взял в работу</option>
-            </select>
-            <select id="leadSortSelect" style="max-width: 210px;">
-              <option value="manual">Сортировка: сначала новые</option>
-              <option value="fio_asc">Сортировка: по ФИО (А → Я)</option>
-              <option value="company_asc">Сортировка: по компании</option>
-              <option value="called_first">Сортировка: сначала позвонил</option>
-              <option value="uncalled_first">Сортировка: сначала не позвонил</option>
-            </select>
+        <div class="inputs-row contacts-form">
+          <input type="text" id="leadFioInput" placeholder="ФИО" />
+          <input type="text" id="leadCompanyInput" placeholder="Компания" />
+          <input type="text" id="leadPhoneInput" placeholder="Телефон (+7...)" />
+          <input type="text" id="leadCallNoteInput" placeholder="Заметки при звонке..." />
+          <input type="text" id="leadCommentInput" placeholder="Комментарии" />
+          <input type="text" id="leadTaskInput" placeholder="Задача - услуги, продукты" />
+        </div>
+
+        <div class="lead-toolbar">
+          <button type="button" class="primary" id="addLeadBtn">+ Добавить строку</button>
+          <button type="button" id="importLeadsFileBtn">Загрузить файл (CSV/TXT/JSON/VCF)</button>
+          <input type="file" id="leadsFileInput" accept=".csv,.txt,.json,.vcf,text/csv,text/plain,application/json,text/vcard" hidden />
+          <button type="button" id="toggleBulkLeadsBtn">Вставить списком</button>
+          <input type="text" id="leadSearchInput" placeholder="Поиск по таблице..." style="max-width: 190px;" />
+          <select id="leadFilterSelect" style="max-width: 205px;">
+            <option value="all">Все статусы</option>
+            <option value="called">Позвонил</option>
+            <option value="not_called">Не позвонил</option>
+            <option value="bought">Купил / взял в работу</option>
+          </select>
+          <select id="leadSortSelect" style="max-width: 210px;">
+            <option value="manual">Сортировка: сначала новые</option>
+            <option value="fio_asc">Сортировка: по ФИО (А → Я)</option>
+            <option value="company_asc">Сортировка: по компании</option>
+            <option value="called_first">Сортировка: сначала позвонил</option>
+            <option value="uncalled_first">Сортировка: сначала не позвонил</option>
+          </select>
+        </div>
+
+        <div id="bulkLeadsBox" style="display: none; margin-bottom: 12px;">
+          <textarea id="bulkLeadsTextarea" placeholder="Каждый контакт с новой строки (через | или ; или запятую):&#10;Иван Смирнов | Кофейня Зерно | +79990001122 | Перезвонить в пт | Чат-бот для заказов"></textarea>
+          <button type="button" class="primary" id="saveBulkLeadsBtn" style="margin-top: 6px;">Добавить контакты списком</button>
+        </div>
+
+        <div class="leads-table-wrap">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th>Компания</th>
+                <th>Контакты и звонок</th>
+                <th>Статус</th>
+                <th>Заметки при звонке</th>
+                <th>Комментарии</th>
+                <th>Задача - услуги, продукты</th>
+                <th style="width: 38px; text-align: center;"></th>
+              </tr>
+            </thead>
+            <tbody id="leadList"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-bar" id="leadsPaginationBar">
+          <span id="leadsPageInfo">Показано 0 из 0</span>
+          <div class="pagination-btns">
+            <button type="button" id="prevLeadsPageBtn">← Назад</button>
+            <span id="leadsPageNumber">1 / 1</span>
+            <button type="button" id="nextLeadsPageBtn">Вперёд →</button>
           </div>
-
-          <div id="bulkLeadsBox" style="display: none; margin-bottom: 12px;">
-            <textarea id="bulkLeadsTextarea" placeholder="Каждый контакт с новой строки (через | или ; или запятую):&#10;Иван Смирнов | Кофейня Зерно | +79990001122 | Перезвонить в пт | Чат-бот для заказов"></textarea>
-            <button type="button" class="primary" id="saveBulkLeadsBtn" style="margin-top: 6px;">Добавить контакты списком</button>
-          </div>
-
-          <div class="leads-table-wrap">
-            <table class="leads-table">
-              <thead>
-                <tr>
-                  <th>ФИО</th>
-                  <th>Компания</th>
-                  <th>Контакты и звонок</th>
-                  <th>Статус</th>
-                  <th>Заметки при звонке</th>
-                  <th>Комментарии</th>
-                  <th>Задача - услуги, продукты</th>
-                  <th style="width: 38px; text-align: center;"></th>
-                </tr>
-              </thead>
-              <tbody id="leadList"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- Объединённый блок: План продаж + задачи, заметки и комментарии по каждому клиенту -->
-        <section class="section-block" id="mergedSalesClientsSection">
-          <div class="section-head">
-            <h2 class="section-title">План продаж · Задачи, заметки и комментарии по клиентам</h2>
-            <span class="counter" id="mergedSalesCounter">0 / 30</span>
-          </div>
-          <p class="subtitle" id="mergedSalesSubtitle">Автоперенос при статусе «Купил / взял в работу» · Разово и ведение/мес</p>
-
-          <div class="kpi-grid">
-            <div class="kpi">
-              <div class="kpi-label">Разовые (факт)</div>
-              <div class="kpi-val" id="mergedActualOneTime">0 ₽</div>
-              <div class="kpi-sub" id="mergedTargetOneTime">цель: 450 000 ₽</div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-label">Ведение / мес</div>
-              <div class="kpi-val" id="mergedActualMonthly">0 ₽/мес</div>
-              <div class="kpi-sub" id="mergedTargetMonthly">цель: 150 000 ₽/мес</div>
-            </div>
-          </div>
-
-          <div class="client-list" id="mergedClientList"></div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
 
     <!-- Единая строка управления в самом низу страницы -->
@@ -1033,6 +1022,7 @@
     const SUPABASE_URL = "https://fptpsokjgswremxxgaou.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_Bcf0akoUCRRRnG7tLVV6VQ_ExpVmEPs";
     const PLANNER_ROW_ID = "main";
+    const LEADS_PAGE_SIZE = 50;
 
     const hasSupabaseConfig =
       SUPABASE_URL.startsWith("https://") &&
@@ -1117,6 +1107,7 @@
     };
 
     let leadSearchQuery = "";
+    let currentLeadsPage = 1;
     let searchDebounceTimer = null;
     let cloudPushTimer = null;
     let pendingConfirmCallback = null;
@@ -1131,6 +1122,10 @@
       if (rawLead.status === "bought" || rawLead.status === "Купил / взял в работу") return "bought";
       if (rawLead.status === "called" || rawLead.status === "Позвонил" || rawLead.called) return "called";
       return "not_called";
+    }
+
+    function buildLeadSearchText(l) {
+      return `${l.fio} ${l.company} ${l.phone} ${l.callNote} ${l.comment} ${l.task}`.toLowerCase();
     }
 
     function normalizeState(raw) {
@@ -1160,7 +1155,7 @@
           items: Array.isArray(rawLeads.items)
             ? rawLeads.items.map((l, idx) => {
                 const status = normalizeLeadStatus(l);
-                return {
+                const item = {
                   id: String(l.id || `l-${Date.now()}-${idx}`),
                   fio: String(l.fio || l.name || ""),
                   company: String(l.company || l.niche || ""),
@@ -1172,6 +1167,8 @@
                   called: status === "called" || status === "bought" || Boolean(l.called),
                   createdAt: typeof l.createdAt === "string" ? l.createdAt : new Date().toISOString()
                 };
+                item._search = buildLeadSearchText(item);
+                return item;
               })
             : []
         },
@@ -1272,7 +1269,7 @@
       if (el) el.textContent = `· ${text}`;
     }
 
-    function saveState(touchTimestamp = true, delayMs = 600) {
+    function saveState(touchTimestamp = true, delayMs = 1100) {
       if (touchTimestamp) {
         state.updatedAt = new Date().toISOString();
       }
@@ -1426,10 +1423,6 @@
       return { oneTime, monthly };
     }
 
-    function getActiveSalesClients() {
-      return (state.sales.clients || []).filter((c) => c.done || Boolean(c.sourceLeadId));
-    }
-
     function promoteLeadToSales(lead) {
       if (!lead) return;
       const existing = state.sales.clients.find(
@@ -1522,14 +1515,8 @@
         if (filterBy === "not_called" && st !== "not_called") return false;
         if (filterBy === "bought" && st !== "bought") return false;
         if (!q) return true;
-        return (
-          l.fio.toLowerCase().includes(q) ||
-          l.company.toLowerCase().includes(q) ||
-          l.phone.toLowerCase().includes(q) ||
-          l.callNote.toLowerCase().includes(q) ||
-          l.comment.toLowerCase().includes(q) ||
-          l.task.toLowerCase().includes(q)
-        );
+        const searchStr = l._search || buildLeadSearchText(l);
+        return searchStr.includes(q);
       });
 
       if (sortBy === "fio_asc") {
@@ -1542,15 +1529,37 @@
         list = [...list].sort((a, b) => Number(normalizeLeadStatus(a) !== "not_called") - Number(normalizeLeadStatus(b) !== "not_called"));
       }
 
+      const totalFiltered = list.length;
+      const totalPages = Math.max(1, Math.ceil(totalFiltered / LEADS_PAGE_SIZE));
+      if (currentLeadsPage > totalPages) currentLeadsPage = totalPages;
+      if (currentLeadsPage < 1) currentLeadsPage = 1;
+
+      const startIdx = (currentLeadsPage - 1) * LEADS_PAGE_SIZE;
+      const endIdx = Math.min(totalFiltered, startIdx + LEADS_PAGE_SIZE);
+      const pageList = list.slice(startIdx, endIdx);
+
+      const pageInfoEl = document.getElementById("leadsPageInfo");
+      const pageNumEl = document.getElementById("leadsPageNumber");
+      const prevBtn = document.getElementById("prevLeadsPageBtn");
+      const nextBtn = document.getElementById("nextLeadsPageBtn");
+      if (pageInfoEl) {
+        pageInfoEl.textContent = totalFiltered
+          ? `Показано ${startIdx + 1}–${endIdx} из ${totalFiltered} (всего ${totalCount})`
+          : `Показано 0 из ${totalCount}`;
+      }
+      if (pageNumEl) pageNumEl.textContent = `${currentLeadsPage} / ${totalPages}`;
+      if (prevBtn) prevBtn.disabled = currentLeadsPage <= 1;
+      if (nextBtn) nextBtn.disabled = currentLeadsPage >= totalPages;
+
       const tbody = document.getElementById("leadList");
       if (!tbody) return;
 
-      if (!list.length) {
+      if (!pageList.length) {
         tbody.innerHTML = `<tr><td colspan="8"><div class="empty">Контактов пока нет. Добавьте строку выше, вставьте списком или загрузите файл.</div></td></tr>`;
         return;
       }
 
-      tbody.innerHTML = list
+      tbody.innerHTML = pageList
         .map((l) => {
           const telHref = extractTelHref(l.phone);
           const callLinkHtml = telHref
@@ -1674,30 +1683,6 @@
           listEl.innerHTML = `<div class="empty">Пока нет клиентов. Добавьте первого выше или выберите статус «Купил / взял в работу» в контактах.</div>`;
         } else {
           listEl.innerHTML = clients.map((c) => buildClientCardHtml(c, baseOneTime, baseMonthly)).join("");
-        }
-      }
-
-      const mergedCounter = document.getElementById("mergedSalesCounter");
-      const mergedSub = document.getElementById("mergedSalesSubtitle");
-      const mergedActOne = document.getElementById("mergedActualOneTime");
-      const mergedTgtOne = document.getElementById("mergedTargetOneTime");
-      const mergedActMon = document.getElementById("mergedActualMonthly");
-      const mergedTgtMon = document.getElementById("mergedTargetMonthly");
-      const mergedList = document.getElementById("mergedClientList");
-
-      if (mergedCounter) mergedCounter.textContent = `${doneCount} / ${goalClients}`;
-      if (mergedSub) mergedSub.textContent = `Выполнено: ${doneCount} из ${goalClients} · ${formatRub(baseOneTime)} разово + ${formatRub(baseMonthly)}/мес`;
-      if (mergedActOne) mergedActOne.textContent = formatRub(actualOneTime);
-      if (mergedTgtOne) mergedTgtOne.textContent = `цель: ${formatRub(targetOneTimeTotal)}`;
-      if (mergedActMon) mergedActMon.textContent = `${formatRub(actualMonthly)}/мес`;
-      if (mergedTgtMon) mergedTgtMon.textContent = `цель: ${formatRub(targetMonthlyTotal)}/мес`;
-
-      if (mergedList) {
-        const activeClients = getActiveSalesClients();
-        if (!activeClients.length) {
-          mergedList.innerHTML = `<div class="empty">Отметьте клиента в плане продаж или выберите статус «Купил / взял в работу» в контактах.</div>`;
-        } else {
-          mergedList.innerHTML = activeClients.map((c) => buildClientCardHtml(c, baseOneTime, baseMonthly)).join("");
         }
       }
 
@@ -1886,7 +1871,7 @@
 
     function createLeadRecord(fio = "", company = "", phone = "", callNote = "", comment = "", task = "", status = "not_called", idx = 0) {
       const cleanStatus = ["not_called", "called", "bought"].includes(status) ? status : "not_called";
-      return {
+      const record = {
         id: `l-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
         fio: String(fio || "").trim(),
         company: String(company || "").trim(),
@@ -1898,6 +1883,8 @@
         called: cleanStatus === "called" || cleanStatus === "bought",
         createdAt: new Date().toISOString()
       };
+      record._search = buildLeadSearchText(record);
+      return record;
     }
 
     function parseContactsText(rawText) {
@@ -2040,6 +2027,7 @@
       }
 
       state.leads.items.unshift(createLeadRecord(fio, company, phone, callNote, comment, task, "not_called", 0));
+      currentLeadsPage = 1;
 
       if (fioEl) fioEl.value = "";
       if (companyEl) companyEl.value = "";
@@ -2049,7 +2037,7 @@
       if (taskEl) taskEl.value = "";
 
       renderLeads();
-      saveState(true, 300);
+      saveState(true, 900);
     }
 
     bindEventSafe("noticeOkBtn", "click", () => {
@@ -2120,7 +2108,9 @@
 
     bindEventSafe("callGoalInput", "input", (e) => {
       state.leads.callGoal = Math.max(0, Number(e.target.value) || 0);
-      renderLeads();
+      const goalStatEl = document.getElementById("callGoalProgressStat");
+      const calledCount = state.leads.items.filter((l) => l.status === "called" || l.status === "bought" || l.called).length;
+      if (goalStatEl) goalStatEl.textContent = `${calledCount} / ${state.leads.callGoal}`;
       saveState();
     });
 
@@ -2133,7 +2123,7 @@
         }));
         state.leads.callGoal = 0;
         renderLeads();
-        saveState(true, 200);
+        saveState(true, 600);
       });
     });
 
@@ -2159,11 +2149,12 @@
         return;
       }
       state.leads.items.unshift(...parsed);
+      currentLeadsPage = 1;
       ta.value = "";
       const box = document.getElementById("bulkLeadsBox");
       if (box) box.style.display = "none";
       renderLeads();
-      saveState(true, 300);
+      saveState(true, 900);
       showNotice(`Добавлено контактов: ${parsed.length}.`);
     });
 
@@ -2182,8 +2173,9 @@
           showNotice("В файле не найдено контактов для загрузки.");
         } else {
           state.leads.items.unshift(...parsed);
+          currentLeadsPage = 1;
           renderLeads();
-          saveState(true, 300);
+          saveState(true, 900);
           showNotice(`Загружено контактов: ${parsed.length}.`);
         }
         e.target.value = "";
@@ -2193,21 +2185,61 @@
 
     bindEventSafe("leadSearchInput", "input", (e) => {
       leadSearchQuery = e.target.value;
+      currentLeadsPage = 1;
       clearTimeout(searchDebounceTimer);
       searchDebounceTimer = setTimeout(() => {
         renderLeads();
-      }, 150);
+      }, 220);
     });
 
     bindEventSafe("leadFilterSelect", "change", (e) => {
       state.leads.filterBy = e.target.value;
+      currentLeadsPage = 1;
       renderLeads();
       saveState();
     });
 
     bindEventSafe("leadSortSelect", "change", (e) => {
       state.leads.sortBy = e.target.value;
+      currentLeadsPage = 1;
       renderLeads();
+      saveState();
+    });
+
+    bindEventSafe("prevLeadsPageBtn", "click", () => {
+      if (currentLeadsPage > 1) {
+        currentLeadsPage -= 1;
+        renderLeads();
+      }
+    });
+
+    bindEventSafe("nextLeadsPageBtn", "click", () => {
+      currentLeadsPage += 1;
+      renderLeads();
+    });
+
+    bindEventSafe("leadList", "input", (e) => {
+      const row = e.target.closest(".lead-row");
+      if (!row) return;
+      const lead = state.leads.items.find((l) => l.id === row.dataset.leadId);
+      if (!lead) return;
+
+      if (e.target.classList.contains("lead-fio-edit")) {
+        lead.fio = e.target.value;
+      } else if (e.target.classList.contains("lead-company-edit")) {
+        lead.company = e.target.value;
+      } else if (e.target.classList.contains("lead-phone-edit")) {
+        lead.phone = e.target.value;
+      } else if (e.target.classList.contains("lead-callnote-input")) {
+        lead.callNote = e.target.value;
+      } else if (e.target.classList.contains("lead-comment-input")) {
+        lead.comment = e.target.value;
+      } else if (e.target.classList.contains("lead-task-input")) {
+        lead.task = e.target.value;
+      } else {
+        return;
+      }
+      lead._search = buildLeadSearchText(lead);
       saveState();
     });
 
@@ -2226,25 +2258,11 @@
           renderSales();
         }
         renderLeads();
-        saveState(true, 250);
-      } else if (e.target.classList.contains("lead-fio-edit")) {
-        lead.fio = e.target.value;
-        saveState();
-      } else if (e.target.classList.contains("lead-company-edit")) {
-        lead.company = e.target.value;
-        saveState();
+        saveState(true, 700);
       } else if (e.target.classList.contains("lead-phone-edit")) {
         lead.phone = e.target.value;
+        lead._search = buildLeadSearchText(lead);
         renderLeads();
-        saveState();
-      } else if (e.target.classList.contains("lead-callnote-input")) {
-        lead.callNote = e.target.value;
-        saveState();
-      } else if (e.target.classList.contains("lead-comment-input")) {
-        lead.comment = e.target.value;
-        saveState();
-      } else if (e.target.classList.contains("lead-task-input")) {
-        lead.task = e.target.value;
         saveState();
       }
     });
@@ -2255,7 +2273,7 @@
       if (!row) return;
       state.leads.items = state.leads.items.filter((l) => l.id !== row.dataset.leadId);
       renderLeads();
-      saveState(true, 300);
+      saveState(true, 700);
     });
 
     bindEventSafe("generalNotesTextarea", "input", (e) => {
@@ -2293,8 +2311,9 @@
         try {
           const parsed = JSON.parse(String(reader.result || "{}"));
           state = normalizeState(parsed);
+          currentLeadsPage = 1;
           renderAll();
-          saveState(true, 200);
+          saveState(true, 500);
           showNotice("Данные из JSON успешно загружены.");
         } catch {
           showNotice("Не удалось прочитать JSON-файл.");
@@ -2361,7 +2380,7 @@
       if (noteEl) noteEl.value = "";
       if (commentEl) commentEl.value = "";
       renderSales();
-      saveState(true, 300);
+      saveState(true, 600);
     }
 
     bindEventSafe("addClientBtn", "click", addClientFromSales);
@@ -2369,14 +2388,8 @@
       if (e.key === "Enter") addClientFromSales();
     });
 
-    function syncClientFieldInputs(clientId, className, value) {
-      document.querySelectorAll(`.client-item[data-client-id="${clientId}"] .${className}`).forEach((inp) => {
-        if (inp.value !== value) inp.value = value;
-      });
-    }
-
     function updateSalesKpiLabelsOnly() {
-      const { goalClients, baseOneTime, baseMonthly, clients } = state.sales;
+      const { baseOneTime, baseMonthly, clients } = state.sales;
       const doneClients = clients.filter((c) => c.done);
       let actualOneTime = 0;
       let actualMonthly = 0;
@@ -2388,18 +2401,15 @@
 
       const actOne = document.getElementById("actualOneTime");
       const actMon = document.getElementById("actualMonthly");
-      const mActOne = document.getElementById("mergedActualOneTime");
-      const mActMon = document.getElementById("mergedActualMonthly");
       if (actOne) actOne.textContent = formatRub(actualOneTime);
       if (actMon) actMon.textContent = `${formatRub(actualMonthly)}/мес`;
-      if (mActOne) mActOne.textContent = formatRub(actualOneTime);
-      if (mActMon) mActMon.textContent = `${formatRub(actualMonthly)}/мес`;
 
       clients.forEach((c) => {
         const amt = getClientAmounts(c);
-        document.querySelectorAll(`.client-item[data-client-id="${c.id}"] .client-amount`).forEach((el) => {
-          el.textContent = `${formatRub(amt.oneTime)} + ${formatRub(amt.monthly)}/м`;
-        });
+        const amountEl = document.querySelector(`.client-item[data-client-id="${c.id}"] .client-amount`);
+        if (amountEl) {
+          amountEl.textContent = `${formatRub(amt.oneTime)} + ${formatRub(amt.monthly)}/м`;
+        }
       });
     }
 
@@ -2412,28 +2422,23 @@
       if (e.target.classList.contains("client-check") && e.type === "change") {
         client.done = e.target.checked;
         renderSales();
-        saveState(true, 250);
+        saveState(true, 600);
       } else if (e.target.classList.contains("client-one-input")) {
         client.oneTime = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
-        syncClientFieldInputs(client.id, "client-one-input", e.target.value);
         updateSalesKpiLabelsOnly();
         saveState();
       } else if (e.target.classList.contains("client-mon-input")) {
         client.monthly = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
-        syncClientFieldInputs(client.id, "client-mon-input", e.target.value);
         updateSalesKpiLabelsOnly();
         saveState();
       } else if (e.target.classList.contains("client-task-input")) {
         client.task = e.target.value;
-        syncClientFieldInputs(client.id, "client-task-input", e.target.value);
         saveState();
       } else if (e.target.classList.contains("client-note-input")) {
         client.note = e.target.value;
-        syncClientFieldInputs(client.id, "client-note-input", e.target.value);
         saveState();
       } else if (e.target.classList.contains("client-comment-input")) {
         client.comment = e.target.value;
-        syncClientFieldInputs(client.id, "client-comment-input", e.target.value);
         saveState();
       }
     }
@@ -2444,15 +2449,12 @@
       if (!item) return;
       state.sales.clients = state.sales.clients.filter((c) => c.id !== item.dataset.clientId);
       renderSales();
-      saveState(true, 300);
+      saveState(true, 600);
     }
 
     bindEventSafe("clientList", "change", handleClientContainerEvent);
     bindEventSafe("clientList", "input", handleClientContainerEvent);
     bindEventSafe("clientList", "click", handleClientContainerClick);
-    bindEventSafe("mergedClientList", "change", handleClientContainerEvent);
-    bindEventSafe("mergedClientList", "input", handleClientContainerEvent);
-    bindEventSafe("mergedClientList", "click", handleClientContainerClick);
 
     bindEventSafe("dept1Tabs", "click", (e) => {
       const btn = e.target.closest(".tab-btn");
