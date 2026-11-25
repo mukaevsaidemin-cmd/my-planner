@@ -59,7 +59,54 @@
       transition: background 0.2s ease, color 0.2s ease;
     }
 
+    .auth-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--control-bg);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .auth-title {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .auth-sub {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .auth-field {
+      margin-bottom: 12px;
+    }
+
+    .auth-field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .auth-error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+
     .planner-shell {
+      display: none;
       width: 100%;
       max-width: 100%;
       margin: 0 auto;
@@ -190,6 +237,8 @@
 
     input[type="text"],
     input[type="number"],
+    input[type="email"],
+    input[type="password"],
     select,
     textarea {
       width: 100%;
@@ -198,6 +247,11 @@
       border-radius: 10px;
       background: var(--control-bg);
       font-size: 13px;
+    }
+
+    .auth-card input[type="email"],
+    .auth-card input[type="password"] {
+      background: var(--bg);
     }
 
     textarea {
@@ -579,7 +633,25 @@
   </style>
 </head>
 <body>
-  <div class="planner-shell">
+  <!-- Экран входа для доступа только авторизованному пользователю -->
+  <div class="auth-shell" id="authShell">
+    <form class="auth-card" id="loginForm">
+      <h1 class="auth-title">Вход в планер</h1>
+      <p class="auth-sub">Доступ к контактам и данным только после входа в аккаунт</p>
+      <div class="auth-field">
+        <label for="authEmailInput">Email</label>
+        <input type="email" id="authEmailInput" required autocomplete="email" placeholder="mukaevsaidemin@gmail.com" />
+      </div>
+      <div class="auth-field">
+        <label for="authPasswordInput">Пароль</label>
+        <input type="password" id="authPasswordInput" required autocomplete="current-password" placeholder="Введите пароль" />
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <button type="submit" class="primary" id="loginSubmitBtn" style="width: 100%;">Войти</button>
+    </form>
+  </div>
+
+  <div class="planner-shell" id="plannerShell">
     <div class="workspace">
       <!-- Три горизонтальные колонки сверху -->
       <div class="top-columns">
@@ -769,14 +841,14 @@
       <div class="brand">
         <span class="dot"></span>
         <span>Планер автоматизации и MVP</span>
-        <span class="sync-status" id="syncStatus">· синхронизировано с Supabase</span>
+        <span class="sync-status" id="syncStatus">· требуется вход</span>
       </div>
       <div class="actions">
         <button type="button" id="exportBtn">Экспорт JSON</button>
         <button type="button" id="importBtn">Импорт JSON</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden />
         <button type="button" class="icon-btn" id="themeBtn" title="Тема">🙂</button>
-        
+        <button type="button" id="logoutBtn">Выйти</button>
       </div>
     </footer>
   </div>
@@ -881,13 +953,13 @@
     let leadSearchQuery = "";
     let cloudPushTimer = null;
     let pendingConfirmCallback = null;
+    let currentSession = null;
+    let realtimeChannel = null;
 
-    // Возвращает глубокую копию базового состояния планера
     function cloneDefault() {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
     }
 
-    // Нормализует состояние после загрузки из localStorage, JSON или Supabase
     function normalizeState(raw) {
       const base = cloneDefault();
       if (!raw || typeof raw !== "object") return base;
@@ -960,7 +1032,6 @@
       };
     }
 
-    // Загружает локальное состояние из localStorage с защитой от ошибок чтения
     function loadLocalState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -973,7 +1044,15 @@
 
     let state = loadLocalState();
 
-    // Отображает уведомление или окно подтверждения вместо alert()/confirm()
+    function applyAuthVisibility() {
+      const authShell = document.getElementById("authShell");
+      const plannerShell = document.getElementById("plannerShell");
+      const isAuthenticated = !sbClient || Boolean(currentSession);
+
+      if (authShell) authShell.style.display = isAuthenticated ? "none" : "flex";
+      if (plannerShell) plannerShell.style.display = isAuthenticated ? "block" : "none";
+    }
+
     function showNotice(message, onConfirm = null) {
       const backdrop = document.getElementById("noticeModalBackdrop");
       const msgEl = document.getElementById("noticeModalMessage");
@@ -994,13 +1073,11 @@
       backdrop.style.display = "flex";
     }
 
-    // Обновляет индикатор состояния синхронизации в нижней строке
     function setSyncStatus(text) {
       const el = document.getElementById("syncStatus");
       if (el) el.textContent = `· ${text}`;
     }
 
-    // Сохраняет данные в localStorage и ставит в очередь отправку в Supabase
     function saveState(touchTimestamp = true) {
       if (touchTimestamp) {
         state.updatedAt = new Date().toISOString();
@@ -1012,6 +1089,10 @@
       }
 
       if (sbClient) {
+        if (!currentSession) {
+          setSyncStatus("требуется вход");
+          return;
+        }
         setSyncStatus("сохранение в Supabase...");
         clearTimeout(cloudPushTimer);
         cloudPushTimer = setTimeout(pushToCloud, 450);
@@ -1020,9 +1101,8 @@
       }
     }
 
-    // Отправляет состояние в таблицу planner_state (id = 'main')
     async function pushToCloud() {
-      if (!sbClient) return;
+      if (!sbClient || !currentSession) return;
       try {
         const { error } = await sbClient
           .from("planner_state")
@@ -1044,10 +1124,13 @@
       }
     }
 
-    // Загружает актуальное состояние из Supabase при запуске
     async function pullFromCloud() {
       if (!sbClient) {
         setSyncStatus("локально");
+        return;
+      }
+      if (!currentSession) {
+        setSyncStatus("требуется вход");
         return;
       }
       setSyncStatus("проверка Supabase...");
@@ -1058,7 +1141,13 @@
           .eq("id", PLANNER_ROW_ID)
           .single();
 
-        if (error || !data || !data.data || Object.keys(data.data).length === 0) {
+        if (error) {
+          console.error("Supabase pull error:", error);
+          setSyncStatus("ошибка доступа к Supabase");
+          return;
+        }
+
+        if (!data || !data.data || Object.keys(data.data).length === 0) {
           setSyncStatus("синхронизировано с Supabase");
           return;
         }
@@ -1083,9 +1172,15 @@
       }
     }
 
-    // Подписывается на изменения строки id = 'main' в Supabase Realtime
+    function unsubscribeFromCloud() {
+      if (sbClient && realtimeChannel) {
+        sbClient.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+    }
+
     function subscribeToCloud() {
-      if (!sbClient) return;
+      if (!sbClient || !currentSession || realtimeChannel) return;
       const isSandbox =
         typeof window !== "undefined" &&
         (window.location.protocol === "blob:" ||
@@ -1094,7 +1189,7 @@
       if (isSandbox) return;
 
       try {
-        sbClient
+        realtimeChannel = sbClient
           .channel("planner-main-sync")
           .on(
             "postgres_changes",
@@ -1143,7 +1238,6 @@
       if (btn) btn.textContent = state.theme === "dark" ? "🌙" : "🙂";
     }
 
-    // Рендерит таблицу контактов под верхними колонками
     function renderLeads() {
       const { items, filterBy, sortBy } = state.leads;
       const calledCount = items.filter((l) => l.called).length;
@@ -1211,7 +1305,6 @@
         .join("");
     }
 
-    // Рендерит колонку «1. План продаж»
     function renderSales() {
       const { goalClients, baseOneTime, baseMonthly, clients } = state.sales;
       const doneClients = clients.filter((c) => c.done);
@@ -1295,7 +1388,6 @@
         .join("");
     }
 
-    // Обновляет список направлений для выбранного режима в Отделе 1
     function populateSubcatSelect() {
       const modeSelect = document.getElementById("taskModeSelect");
       const subcatSelect = document.getElementById("taskSubcatSelect");
@@ -1321,7 +1413,6 @@
       }
     }
 
-    // Рендерит колонку «2. Отдел 1: Услуги и ниши»
     function renderDept1() {
       const { viewMode, selectedCategory, tasks } = state.dept1;
 
@@ -1416,7 +1507,6 @@
         .join("");
     }
 
-    // Рендерит колонку «3. Отдел 2: Свой MVP»
     function renderDept2() {
       const tasks = state.dept2.tasks;
       const doneCount = tasks.filter((t) => t.done).length;
@@ -1448,7 +1538,6 @@
         .join("");
     }
 
-    // Перерисовывает все разделы планера
     function renderAll() {
       applyTheme();
       renderLeads();
@@ -1476,7 +1565,6 @@
       }
     }
 
-    // Создаёт нормализованный объект контакта
     function createLeadRecord(fio = "", company = "", phone = "", comment = "", task = "", called = false, idx = 0) {
       return {
         id: `l-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1490,7 +1578,6 @@
       };
     }
 
-    // Разбирает текст, CSV/TSV/TXT или JSON в массив контактов
     function parseContactsText(rawText) {
       const text = String(rawText || "").trim();
       if (!text) return [];
@@ -1549,7 +1636,6 @@
       return result;
     }
 
-    // Добавляет одну строку контакта из формы в разделе «Контакты»
     function addLeadSingle() {
       const fioEl = document.getElementById("leadFioInput");
       const companyEl = document.getElementById("leadCompanyInput");
@@ -1580,7 +1666,6 @@
       saveState();
     }
 
-    // Обработчики модального окна уведомлений
     bindEventSafe("noticeOkBtn", "click", () => {
       const backdrop = document.getElementById("noticeModalBackdrop");
       const cb = pendingConfirmCallback;
@@ -1593,6 +1678,59 @@
       const backdrop = document.getElementById("noticeModalBackdrop");
       pendingConfirmCallback = null;
       if (backdrop) backdrop.style.display = "none";
+    });
+
+    // Обработчики входа и выхода
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("authError");
+        const btn = document.getElementById("loginSubmitBtn");
+        const email = document.getElementById("authEmailInput")?.value.trim() || "";
+        const password = document.getElementById("authPasswordInput")?.value || "";
+
+        if (errEl) errEl.textContent = "";
+        if (!sbClient) {
+          if (errEl) errEl.textContent = "Не настроен клиент Supabase.";
+          return;
+        }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Вход...";
+        }
+
+        try {
+          const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+          if (error) {
+            if (errEl) errEl.textContent = "Неверный email или пароль.";
+          } else {
+            currentSession = data.session;
+            applyAuthVisibility();
+            await pullFromCloud();
+            subscribeToCloud();
+          }
+        } catch {
+          if (errEl) errEl.textContent = "Ошибка сети при входе.";
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Войти";
+          }
+        }
+      });
+    }
+
+    bindEventSafe("logoutBtn", "click", async () => {
+      clearTimeout(cloudPushTimer);
+      unsubscribeFromCloud();
+      if (sbClient) {
+        await sbClient.auth.signOut();
+      }
+      currentSession = null;
+      applyAuthVisibility();
+      setSyncStatus("требуется вход");
     });
 
     // Обработчики раздела «Контакты»
@@ -1709,15 +1847,6 @@
       state.theme = state.theme === "dark" ? "light" : "dark";
       applyTheme();
       saveState();
-    });
-
-    bindEventSafe("resetBtn", "click", () => {
-      showNotice("Сбросить планер к исходным настройкам?", () => {
-        state = cloneDefault();
-        renderAll();
-        saveState();
-        showNotice("Планер сброшен к исходным настройкам.");
-      });
     });
 
     bindEventSafe("exportBtn", "click", () => {
@@ -1968,10 +2097,41 @@
       saveState();
     });
 
-    // Инициализация интерфейса и синхронизации
-    renderAll();
-    pullFromCloud();
-    subscribeToCloud();
+    // Инициализация интерфейса, сессии и синхронизации
+    async function initApp() {
+      renderAll();
+
+      if (!sbClient) {
+        applyAuthVisibility();
+        setSyncStatus("локально");
+        return;
+      }
+
+      const { data } = await sbClient.auth.getSession();
+      currentSession = data.session || null;
+      applyAuthVisibility();
+
+      if (currentSession) {
+        await pullFromCloud();
+        subscribeToCloud();
+      } else {
+        setSyncStatus("требуется вход");
+      }
+
+      sbClient.auth.onAuthStateChange(async (_event, session) => {
+        currentSession = session || null;
+        applyAuthVisibility();
+        if (currentSession) {
+          await pullFromCloud();
+          subscribeToCloud();
+        } else {
+          unsubscribeFromCloud();
+          setSyncStatus("требуется вход");
+        }
+      });
+    }
+
+    initApp();
   </script>
 </body>
 </html>
