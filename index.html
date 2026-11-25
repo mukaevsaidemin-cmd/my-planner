@@ -576,6 +576,34 @@
       box-shadow: inset 0 0 0 1px var(--accent-soft);
     }
 
+    .task-row {
+      align-items: flex-start;
+    }
+
+    .task-title-input {
+      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 42px;
+      max-height: 260px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.45;
+      resize: none;
+      overflow-y: hidden;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .task-title-input:focus {
+      box-shadow: inset 0 0 0 1px var(--accent-soft);
+    }
+
     .empty {
       text-align: center;
       color: var(--muted);
@@ -823,7 +851,7 @@
         <!-- 1. Объединённый блок: План продаж · Задачи, заметки и комментарии по клиентам -->
         <section class="section-block" id="salesSection">
           <div class="section-head">
-            <h2 class="section-title">План продаж</h2>
+            <h2 class="section-title">1. План продаж</h2>
             <span class="counter" id="salesCounter">0 / 30</span>
           </div>
 
@@ -890,32 +918,23 @@
           </div>
         </section>
 
-        <!-- Услуги и ниши -->
+        <!-- 2. Услуги и ниши -->
         <section class="section-block" id="dept1Section">
           <div class="section-head">
-            <h2 class="section-title">Услуги и ниши</h2>
+            <h2 class="section-title">2. Услуги и ниши</h2>
 
           </div>
           <div class="section-head" style="margin-bottom: 4px;">
             <span class="counter" id="dept1Counter">0/0</span>
           </div>
 
-          <div class="tabs" id="dept1Tabs">
-            <button type="button" class="tab-btn active" data-mode="all">Все</button>
-            <button type="button" class="tab-btn" data-mode="specialists">Специалисты</button>
-            <button type="button" class="tab-btn" data-mode="industries">Отрасли бизнеса</button>
-            <button type="button" class="tab-btn" data-mode="general">Общие задачи</button>
-          </div>
-
           <div class="cat-box" id="catBox">
             <div class="cat-head">
-              <span id="catBoxTitle">Направления</span>
-              <button type="button" class="link-btn" id="resetFilterBtn">Сбросить выбор</button>
+              <span id="catBoxTitle">Добавить направление</span>
             </div>
-            <div class="chips" id="chipList"></div>
             <div class="add-row" style="margin-bottom: 0;">
               <input type="text" id="newCatInput" placeholder="Добавить своё направление..." />
-              <button type="button" id="addCatBtn">+ Направление</button>
+              <button type="button" id="addCatBtn">+ Добавить</button>
             </div>
           </div>
 
@@ -936,10 +955,10 @@
           <div class="task-list" id="dept1TaskList"></div>
         </section>
 
-        <!-- Свои продукты -->
+        <!-- 3. Свои продукты -->
         <section class="section-block" id="dept2Section">
           <div class="section-head">
-            <h2 class="section-title">Свои продукты</h2>
+            <h2 class="section-title">3. Свои продукты</h2>
 
           </div>
           <div class="section-head" style="margin-bottom: 10px;">
@@ -1122,8 +1141,8 @@
         ]
       },
       dept1: {
-        viewMode: "all",
-        selectedCategory: "Все",
+        viewMode: "general",
+        selectedCategory: "Общие задачи",
         specialists: [
           "Риэлторы",
           "Маркетологи и агентства",
@@ -1252,7 +1271,7 @@
         ? raw.dept1.tasks.map((t, idx) => ({
             id: String(t.id || `d1-${Date.now()}-${idx}`),
             title: String(t.title || ""),
-            mode: ["industries", "general"].includes(t.mode) ? t.mode : "general",
+            mode: ["specialists", "industries", "general"].includes(t.mode) ? t.mode : "general",
             category: t.mode === "general" || !t.category ? "Общие задачи" : String(t.category),
             done: Boolean(t.done)
           }))
@@ -1316,8 +1335,8 @@
             : base.sales.clients
         },
         dept1: {
-          viewMode: ["all", "specialists", "industries", "general"].includes(raw.dept1?.viewMode) ? raw.dept1.viewMode : "all",
-          selectedCategory: String(raw.dept1?.selectedCategory || "Все"),
+          viewMode: ["specialists", "industries", "general"].includes(raw.dept1?.viewMode) ? raw.dept1.viewMode : "general",
+          selectedCategory: String(raw.dept1?.selectedCategory || "Общие задачи"),
           specialists: Array.isArray(raw.dept1?.specialists) && raw.dept1.specialists.length
             ? raw.dept1.specialists.map(String)
             : base.dept1.specialists,
@@ -1807,45 +1826,37 @@
       const selectRow = document.getElementById("dept1SelectRow");
       if (!modeSelect || !subcatSelect) return;
 
-      if (modeSelect.value === "general") {
+      const mode = modeSelect.value;
+      state.dept1.viewMode = mode;
+      if (mode === "general") {
         subcatSelect.style.display = "none";
         if (selectRow) selectRow.style.gridTemplateColumns = "1fr";
         subcatSelect.innerHTML = `<option value="Общие задачи">Общие задачи</option>`;
         subcatSelect.value = "Общие задачи";
+        state.dept1.selectedCategory = "Общие задачи";
         return;
       }
 
       subcatSelect.style.display = "block";
       if (selectRow) selectRow.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-
-      const items = modeSelect.value === "industries"
-        ? state.dept1.industries
-        : state.dept1.specialists;
-      const current = subcatSelect.value;
-
-      subcatSelect.innerHTML = items
-        .map((item) => `<option value="${escapeAttr(item)}">${escapeHtml(item)}</option>`)
-        .join("");
-
-      if (items.includes(current)) {
-        subcatSelect.value = current;
-      } else if (
-        state.dept1.selectedCategory &&
-        state.dept1.selectedCategory !== "Все" &&
-        items.includes(state.dept1.selectedCategory)
-      ) {
-        subcatSelect.value = state.dept1.selectedCategory;
+      const items = mode === "industries" ? state.dept1.industries : state.dept1.specialists;
+      const current = state.dept1.selectedCategory;
+      subcatSelect.innerHTML = items.length
+        ? items.map((item) => `<option value="${escapeAttr(item)}">${escapeHtml(item)}</option>`).join("")
+        : `<option value="">Сначала добавьте вариант ниже</option>`;
+      if (items.includes(current)) subcatSelect.value = current;
+      else {
+        subcatSelect.value = items[0] || "";
+        state.dept1.selectedCategory = items[0] || "";
       }
     }
 
     function getFilteredDept1Tasks() {
       const { viewMode, selectedCategory, tasks } = state.dept1;
       return tasks.filter((t) => {
-        if (viewMode === "all") return true;
-        if (viewMode === "general") return t.mode === "general";
         if (t.mode !== viewMode) return false;
-        if (selectedCategory !== "Все" && t.category !== selectedCategory) return false;
-        return true;
+        if (viewMode === "general") return true;
+        return !selectedCategory || t.category === selectedCategory;
       });
     }
 
@@ -1856,53 +1867,27 @@
       if (counterEl) counterEl.textContent = `${doneCount}/${filteredTasks.length}`;
     }
 
-    function renderDept1() {
-      const { viewMode, selectedCategory } = state.dept1;
-
-      document.querySelectorAll("#dept1Tabs .tab-btn").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.mode === viewMode);
+    function autoGrowTaskTextareas(root) {
+      (root || document).querySelectorAll(".task-title-input").forEach((field) => {
+        field.style.height = "auto";
+        field.style.height = `${Math.min(field.scrollHeight, 260)}px`;
+        field.style.overflowY = field.scrollHeight > 260 ? "auto" : "hidden";
       });
+    }
 
+    function renderDept1() {
+      const { viewMode } = state.dept1;
       const catBox = document.getElementById("catBox");
-      const chipList = document.getElementById("chipList");
       const newCatInput = document.getElementById("newCatInput");
-
-      if (catBox && chipList && newCatInput) {
-        if (viewMode === "all" || viewMode === "general") {
-          catBox.style.display = "none";
-        } else {
-          catBox.style.display = "block";
-          const catBoxTitle = document.getElementById("catBoxTitle");
-          if (catBoxTitle) {
-            catBoxTitle.textContent = viewMode === "specialists" ? "Специалисты:" : "Отрасли бизнеса:";
-          }
-          newCatInput.placeholder =
-            viewMode === "specialists"
-              ? "Новый специалист (напр., Врачи, Логисты)..."
-              : "Новая отрасль (напр., Клиники, Авто)...";
-
-          const pool = viewMode === "specialists" ? state.dept1.specialists : state.dept1.industries;
-          const chips = ["Все", ...pool];
-          if (!chips.includes(selectedCategory)) {
-            state.dept1.selectedCategory = "Все";
-          }
-
-          chipList.innerHTML = chips
-            .map(
-              (cat) => `
-                <button type="button" class="chip ${state.dept1.selectedCategory === cat ? "active" : ""}" data-cat="${escapeAttr(cat)}">
-                  ${escapeHtml(cat)}
-                </button>
-              `
-            )
-            .join("");
-        }
-      }
+      const catBoxTitle = document.getElementById("catBoxTitle");
+      if (catBox) catBox.style.display = viewMode === "general" ? "none" : "block";
+      if (catBoxTitle) catBoxTitle.textContent = viewMode === "specialists" ? "Добавить специалиста" : "Добавить отрасль компании";
+      if (newCatInput) newCatInput.placeholder = viewMode === "specialists"
+        ? "Новый специалист (например, врачи, логисты)..."
+        : "Новая отрасль компании (например, клиники, авто)...";
 
       const modeSelect = document.getElementById("taskModeSelect");
-      if (modeSelect && ["specialists", "industries", "general"].includes(viewMode)) {
-        modeSelect.value = viewMode;
-      }
+      if (modeSelect) modeSelect.value = viewMode;
       populateSubcatSelect();
 
       const filteredTasks = getFilteredDept1Tasks();
@@ -1926,12 +1911,13 @@
             <div class="task-row">
               <span class="drag-handle" title="Перетащить">⋮⋮</span>
               <input type="checkbox" class="d1-check" aria-label="Отметить задачу выполненной" ${t.done ? "checked" : ""} style="width:16px;height:16px;accent-color:var(--accent-soft);flex-shrink:0;" />
-              <input type="text" class="task-title-input d1-title-edit" value="${escapeAttr(t.title)}" aria-label="Текст задачи" />
+              <textarea rows="1" class="task-title-input d1-title-edit" aria-label="Текст задачи">${escapeHtml(t.title)}</textarea>
               <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
             </div>
           </div>
         `)
         .join("");
+      autoGrowTaskTextareas(listEl);
     }
 
     function updateDept2CounterOnly() {
@@ -1959,12 +1945,13 @@
             <div class="task-row">
               <span class="drag-handle" title="Перетащить">⋮⋮</span>
               <input type="checkbox" class="d2-check" aria-label="Отметить задачу выполненной" ${t.done ? "checked" : ""} style="width:16px;height:16px;accent-color:var(--accent-soft);flex-shrink:0;" />
-              <input type="text" class="task-title-input d2-title-edit" value="${escapeAttr(t.title)}" aria-label="Текст задачи" />
+              <textarea rows="1" class="task-title-input d2-title-edit" aria-label="Текст задачи">${escapeHtml(t.title)}</textarea>
               <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
             </div>
           </div>
         `)
         .join("");
+      autoGrowTaskTextareas(listEl);
     }
 
     function renderAll() {
@@ -2583,29 +2570,6 @@
     bindEventSafe("clientList", "input", handleClientContainerEvent);
     bindEventSafe("clientList", "click", handleClientContainerClick);
 
-    bindEventSafe("dept1Tabs", "click", (e) => {
-      const btn = e.target.closest(".tab-btn");
-      if (!btn) return;
-      state.dept1.viewMode = btn.dataset.mode;
-      state.dept1.selectedCategory = "Все";
-      renderDept1();
-      saveState();
-    });
-
-    bindEventSafe("chipList", "click", (e) => {
-      const chip = e.target.closest(".chip");
-      if (!chip) return;
-      state.dept1.selectedCategory = chip.dataset.cat;
-      renderDept1();
-      saveState();
-    });
-
-    bindEventSafe("resetFilterBtn", "click", () => {
-      state.dept1.selectedCategory = "Все";
-      renderDept1();
-      saveState();
-    });
-
     function addCategory() {
       const input = document.getElementById("newCatInput");
       if (!input) return;
@@ -2617,6 +2581,7 @@
       }
       state.dept1.selectedCategory = val;
       input.value = "";
+      populateSubcatSelect();
       renderDept1();
       saveState();
     }
@@ -2626,7 +2591,19 @@
       if (e.key === "Enter") addCategory();
     });
 
-    bindEventSafe("taskModeSelect", "change", populateSubcatSelect);
+    bindEventSafe("taskModeSelect", "change", () => {
+      state.dept1.viewMode = document.getElementById("taskModeSelect").value;
+      state.dept1.selectedCategory = state.dept1.viewMode === "general" ? "Общие задачи" : "";
+      populateSubcatSelect();
+      renderDept1();
+      saveState();
+    });
+
+    bindEventSafe("taskSubcatSelect", "change", () => {
+      state.dept1.selectedCategory = document.getElementById("taskSubcatSelect").value;
+      renderDept1();
+      saveState();
+    });
 
     function addDept1Task() {
       const input = document.getElementById("dept1TaskInput");
@@ -2760,8 +2737,9 @@
         const task = state[deptKey].tasks.find((t) => t.id === item?.dataset.taskId);
         if (!task) return;
         task.title = e.target.value;
-        const span = item.querySelector(".task-title-text");
-        if (span) span.textContent = task.title;
+        e.target.style.height = "auto";
+        e.target.style.height = `${Math.min(e.target.scrollHeight, 260)}px`;
+        e.target.style.overflowY = e.target.scrollHeight > 260 ? "auto" : "hidden";
         saveState();
       });
 
