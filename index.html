@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Планер автоматизации и MVP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Единая цветовая система для светлой и тёмной темы без рамок и теней между блоками */
+    :root {
+      --bg: #f6f7f9;
+      --surface: #f6f7f9;
+      --control-bg: #eef0f4;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #111827;
+      --accent-text: #ffffff;
+      --accent-soft: #10b981;
+      --accent-soft-bg: rgba(16, 185, 129, 0.14);
+      --warn-bg: rgba(245, 158, 11, 0.16);
+      --warn-text: #92400e;
+      --danger: #dc2626;
+      --divider: rgba(17, 24, 39, 0.08);
+    }
+
+    body.dark {
+      --bg: #0f1115;
+      --surface: #0f1115;
+      --control-bg: #181c24;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #f3f4f6;
+      --accent-text: #111827;
+      --accent-soft: #10b981;
+      --accent-soft-bg: rgba(16, 185, 129, 0.16);
+      --warn-bg: rgba(245, 158, 11, 0.18);
+      --warn-text: #fbbf24;
+      --danger: #f87171;
+      --divider: rgba(243, 244, 246, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.45;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .planner-shell {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px 24px 48px;
+      background: var(--surface);
+    }
+
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      width: 100%;
+    }
+
+    /* Три горизонтальные колонки сверху без карточных рамок и теней */
+    .top-columns {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+      align-items: start;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .top-columns {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .planner-shell {
+        padding: 16px 14px 40px;
+      }
+    }
+
+    .section-block {
+      background: transparent;
+      padding: 4px 2px;
+      min-width: 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge.more {
+      background: var(--accent-soft-bg);
+      color: #059669;
+    }
+
+    body.dark .badge.more {
+      color: #34d399;
+    }
+
+    .badge.less {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+    }
+
+    .counter {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .inputs-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .inputs-row.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inputs-row.five {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    @media (max-width: 900px) {
+      .inputs-row.five {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+      color: var(--text);
+      outline: none;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 10px;
+      background: var(--control-bg);
+      font-size: 13px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 64px;
+    }
+
+    button {
+      border: none;
+      background: var(--control-bg);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    button.icon-btn {
+      padding: 7px 11px;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--control-bg);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-soft);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .kpi {
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--control-bg);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .kpi-val {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .add-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .client-list,
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .client-item,
+    .task-item {
+      background: var(--control-bg);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .client-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .check-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .check-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent-soft);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .done-text {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .client-amount {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .client-overrides {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .client-overrides input {
+      padding: 6px 8px;
+      font-size: 12px;
+      background: var(--bg);
+    }
+
+    .del-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 4px 6px;
+      font-size: 14px;
+    }
+
+    .del-btn:hover {
+      color: var(--danger);
+      opacity: 1;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .cat-box {
+      background: var(--control-bg);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .cat-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .link-btn {
+      border: none;
+      background: transparent;
+      padding: 0;
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: underline;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .chip {
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: var(--bg);
+    }
+
+    .chip.active {
+      background: var(--accent-soft);
+      color: #ffffff;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .task-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      padding-left: 24px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 16px 10px;
+      border-radius: 12px;
+      background: var(--control-bg);
+    }
+
+    /* Блок «Контакты» под верхними колонками */
+    .contacts-section {
+      width: 100%;
+      padding-top: 6px;
+    }
+
+    .lead-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .leads-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 12px;
+      background: var(--control-bg);
+      padding: 6px;
+    }
+
+    .leads-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 840px;
+    }
+
+    .leads-table th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--divider);
+    }
+
+    .leads-table td {
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+
+    .leads-table td input[type="text"] {
+      background: var(--bg);
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    /* Единая строка управления в самом низу страницы */
+    .bottom-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+      margin-top: 28px;
+    }
+
+    .brand {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      flex-shrink: 0;
+    }
+
+    .sync-status {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Модальное окно уведомлений и подтверждений вместо alert/confirm */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+
+    .modal-box {
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 18px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .modal-message {
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="planner-shell">
+    <div class="workspace">
+      <!-- Три горизонтальные колонки сверху -->
+      <div class="top-columns">
+        <!-- 1. План продаж -->
+        <section class="section-block" id="salesSection">
+          <div class="section-head">
+            <h2 class="section-title">1. План продаж</h2>
+            <span class="counter" id="salesCounter">0 / 30</span>
+          </div>
+          <p class="subtitle" id="salesSubtitle">Цель: 30 клиентов · 15 000 ₽ разово + 5 000 ₽/мес</p>
+
+          <div class="inputs-row">
+            <div class="field">
+              <label for="goalInput">Цель (клиентов)</label>
+              <input type="number" id="goalInput" min="1" step="1" />
+            </div>
+            <div class="field">
+              <label for="baseOneTimeInput">Разово (₽)</label>
+              <input type="number" id="baseOneTimeInput" min="0" step="500" />
+            </div>
+            <div class="field">
+              <label for="baseMonthlyInput">Ведение/мес (₽)</label>
+              <input type="number" id="baseMonthlyInput" min="0" step="500" />
+            </div>
+          </div>
+
+          <div class="progress-meta">
+            <span id="remainingLabel">Осталось до цели: 30</span>
+            <span id="percentLabel">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="kpi-label">Разовые (факт)</div>
+              <div class="kpi-val" id="actualOneTime">0 ₽</div>
+              <div class="kpi-sub" id="targetOneTime">цель: 450 000 ₽</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Ведение / мес</div>
+              <div class="kpi-val" id="actualMonthly">0 ₽/мес</div>
+              <div class="kpi-sub" id="targetMonthly">цель: 150 000 ₽/мес</div>
+            </div>
+          </div>
+
+          <div class="add-row">
+            <input type="text" id="clientNameInput" placeholder="Имя клиента или проект..." />
+            <button type="button" class="primary" id="addClientBtn">+ Добавить</button>
+          </div>
+          <div class="inputs-row two">
+            <input type="number" id="clientOneTimeInput" placeholder="Разово (по умолч.)" min="0" step="500" />
+            <input type="number" id="clientMonthlyInput" placeholder="Ведение/мес (по умолч.)" min="0" step="500" />
+          </div>
+
+          <div class="client-list" id="clientList"></div>
+        </section>
+
+        <!-- 2. Отдел 1: Услуги и ниши -->
+        <section class="section-block" id="dept1Section">
+          <div class="section-head">
+            <h2 class="section-title">2. Отдел 1: Услуги и ниши</h2>
+            <span class="badge more">Больше времени</span>
+          </div>
+          <div class="section-head" style="margin-bottom: 4px;">
+            <p class="subtitle" style="margin: 0;">Чат-боты, ИИ-ассистенты/агенты, МойСклад, amoCRM, Битрикс24, 1С, задачи/календари</p>
+            <span class="counter" id="dept1Counter">0/0</span>
+          </div>
+
+          <div class="tabs" id="dept1Tabs">
+            <button type="button" class="tab-btn active" data-mode="all">Все</button>
+            <button type="button" class="tab-btn" data-mode="specialists">Специалисты</button>
+            <button type="button" class="tab-btn" data-mode="industries">Отрасли бизнеса</button>
+          </div>
+
+          <div class="cat-box" id="catBox">
+            <div class="cat-head">
+              <span id="catBoxTitle">Направления</span>
+              <button type="button" class="link-btn" id="resetFilterBtn">Сбросить выбор</button>
+            </div>
+            <div class="chips" id="chipList"></div>
+            <div class="add-row" style="margin-bottom: 0;">
+              <input type="text" id="newCatInput" placeholder="Добавить своё направление..." />
+              <button type="button" id="addCatBtn">+ Направление</button>
+            </div>
+          </div>
+
+          <div class="inputs-row two">
+            <select id="taskModeSelect">
+              <option value="specialists">Специалисты</option>
+              <option value="industries">Отрасли бизнеса</option>
+            </select>
+            <select id="taskSubcatSelect"></select>
+          </div>
+
+          <div class="add-row" style="margin-bottom: 0;">
+            <input type="text" id="dept1TaskInput" placeholder="Новая задача, бот, ИИ-агент или интеграция..." />
+            <button type="button" class="primary" id="addDept1TaskBtn">+</button>
+          </div>
+
+          <div class="task-list" id="dept1TaskList"></div>
+        </section>
+
+        <!-- 3. Отдел 2: Свой MVP -->
+        <section class="section-block" id="dept2Section">
+          <div class="section-head">
+            <h2 class="section-title">3. Отдел 2: Свой MVP</h2>
+            <span class="badge less">Меньше времени</span>
+          </div>
+          <div class="section-head" style="margin-bottom: 10px;">
+            <p class="subtitle" style="margin: 0;">Чаты, ИИ-агенты, CRM, склад/финансы, задачи, календари, заметки, напоминания</p>
+            <span class="counter" id="dept2Counter">0/0</span>
+          </div>
+
+          <div class="add-row" style="margin-bottom: 0;">
+            <input type="text" id="dept2TaskInput" placeholder="Новая задача по своему MVP..." />
+            <button type="button" class="primary" id="addDept2TaskBtn">+</button>
+          </div>
+
+          <div class="task-list" id="dept2TaskList"></div>
+        </section>
+      </div>
+
+      <!-- Нижний блок: Контакты -->
+      <section class="contacts-section" id="contactsSection">
+        <div class="section-head">
+          <h2 class="section-title">Контакты</h2>
+          <span class="counter" id="leadsCounter">0 / 0</span>
+        </div>
+        <p class="subtitle">ФИО, компания, контакты, статус звонка, комментарии и задача — какие услуги, продукты</p>
+
+        <div class="inputs-row five">
+          <input type="text" id="leadFioInput" placeholder="ФИО" />
+          <input type="text" id="leadCompanyInput" placeholder="Компания" />
+          <input type="text" id="leadPhoneInput" placeholder="Контакты" />
+          <input type="text" id="leadCommentInput" placeholder="Комментарии" />
+          <input type="text" id="leadTaskInput" placeholder="Задача - какие услуги, продукты" />
+        </div>
+
+        <div class="lead-toolbar">
+          <button type="button" class="primary" id="addLeadBtn">+ Добавить строку</button>
+          <button type="button" id="importLeadsFileBtn">Загрузить файл (CSV/TXT/JSON)</button>
+          <input type="file" id="leadsFileInput" accept=".csv,.txt,.json,text/csv,text/plain,application/json" hidden />
+          <button type="button" id="toggleBulkLeadsBtn">Вставить списком</button>
+          <input type="text" id="leadSearchInput" placeholder="Поиск по таблице..." style="max-width: 220px;" />
+          <select id="leadFilterSelect" style="max-width: 220px;">
+            <option value="all">Все (Позвонил / не позвонил)</option>
+            <option value="called">Позвонил</option>
+            <option value="not_called">Не позвонил</option>
+          </select>
+          <select id="leadSortSelect" style="max-width: 230px;">
+            <option value="manual">Сортировка: сначала новые</option>
+            <option value="fio_asc">Сортировка: по ФИО (А → Я)</option>
+            <option value="company_asc">Сортировка: по компании</option>
+            <option value="called_first">Сортировка: сначала позвонил</option>
+            <option value="uncalled_first">Сортировка: сначала не позвонил</option>
+          </select>
+        </div>
+
+        <div id="bulkLeadsBox" style="display: none; margin-bottom: 12px;">
+          <textarea id="bulkLeadsTextarea" placeholder="Каждый контакт с новой строки (через | или ; или запятую):&#10;Иван Смирнов | Кофейня Зерно | +79990001122 | Перезвонить в пт | Чат-бот для заказов"></textarea>
+          <button type="button" class="primary" id="saveBulkLeadsBtn" style="margin-top: 6px;">Добавить контакты списком</button>
+        </div>
+
+        <div class="leads-table-wrap">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th>Компания</th>
+                <th>Контакты</th>
+                <th>Статус</th>
+                <th>Комментарии</th>
+                <th>Задача - какие услуги, продукты</th>
+                <th style="width: 44px; text-align: center;"></th>
+              </tr>
+            </thead>
+            <tbody id="leadList"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Единая строка управления в самом низу страницы -->
+    <footer class="bottom-bar" id="bottomBar">
+      <div class="brand">
+        <span class="dot"></span>
+        <span>Планер автоматизации и MVP</span>
+        <span class="sync-status" id="syncStatus">· синхронизировано с Supabase</span>
+      </div>
+      <div class="actions">
+        <button type="button" id="exportBtn">Экспорт JSON</button>
+        <button type="button" id="importBtn">Импорт JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden />
+        <button type="button" class="icon-btn" id="themeBtn" title="Тема">🙂</button>
+        <button type="button" id="resetBtn">Сброс</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Модальное окно уведомлений и подтверждений вместо alert/confirm -->
+  <div class="modal-backdrop" id="noticeModalBackdrop">
+    <div class="modal-box">
+      <div class="modal-message" id="noticeModalMessage"></div>
+      <div class="modal-actions">
+        <button type="button" id="noticeCancelBtn" style="display: none;">Отмена</button>
+        <button type="button" class="primary" id="noticeOkBtn">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === НАСТРОЙКИ SUPABASE ===
+    const SUPABASE_URL = "https://fptpsokjgswremxxgaou.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Bcf0akoUCRRRnG7tLVV6VQ_ExpVmEPs";
+    const PLANNER_ROW_ID = "main";
+
+    const hasSupabaseConfig =
+      SUPABASE_URL.startsWith("https://") &&
+      !SUPABASE_URL.includes("YOUR_PROJECT_ID") &&
+      SUPABASE_ANON_KEY &&
+      SUPABASE_ANON_KEY !== "ВСТАВЬ_СЮДА_SUPABASE_ANON_KEY";
+
+    const sbClient = hasSupabaseConfig && window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    const STORAGE_KEY = "automation_mvp_planner_v1";
+
+    const DEFAULT_STATE = {
+      theme: "light",
+      updatedAt: "2026-11-25T00:00:00.000Z",
+      leads: {
+        filterBy: "all",
+        sortBy: "manual",
+        items: []
+      },
+      sales: {
+        goalClients: 30,
+        baseOneTime: 15000,
+        baseMonthly: 5000,
+        clients: [
+          { id: "c1", name: "Клиент #1", done: false, oneTime: null, monthly: null },
+          { id: "c2", name: "Клиент #2", done: false, oneTime: null, monthly: null },
+          { id: "c3", name: "Клиент #3", done: false, oneTime: null, monthly: null }
+        ]
+      },
+      dept1: {
+        viewMode: "all",
+        selectedCategory: "Все",
+        specialists: [
+          "Риэлторы",
+          "Маркетологи и агентства",
+          "Юристы и бухгалтеры",
+          "Коучи и эксперты",
+          "Менеджеры и РОПы"
+        ],
+        industries: [
+          "Общепит и доставка",
+          "Услуги и запись",
+          "Склад, опт и розница",
+          "Недвижимость",
+          "Онлайн-школы"
+        ],
+        tasks: [
+          {
+            id: "d1-1",
+            title: "Собрать типового ИИ-ассистента для первичной квалификации заявок",
+            mode: "specialists",
+            category: "Риэлторы",
+            done: false
+          },
+          {
+            id: "d1-2",
+            title: "Подготовить шаблон бота для приема заказов и статуса доставки",
+            mode: "industries",
+            category: "Общепит и доставка",
+            done: false
+          },
+          {
+            id: "d1-3",
+            title: "Описать связку CRM + МойСклад / 1С для учета остатков и сделок",
+            mode: "industries",
+            category: "Склад, опт и розница",
+            done: false
+          }
+        ]
+      },
+      dept2: {
+        tasks: [
+          { id: "d2-1", title: "Спроектировать единую модель данных (клиент, сделка, задача, товар, платеж)", done: false },
+          { id: "d2-2", title: "Собрать базовый интерфейс задач, календаря и заметок", done: false },
+          { id: "d2-3", title: "Подключить единый поток сообщений и ИИ-ассистента", done: false }
+        ]
+      }
+    };
+
+    let leadSearchQuery = "";
+    let cloudPushTimer = null;
+    let pendingConfirmCallback = null;
+
+    // Возвращает глубокую копию базового состояния планера
+    function cloneDefault() {
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    // Нормализует состояние после загрузки из localStorage, JSON или Supabase
+    function normalizeState(raw) {
+      const base = cloneDefault();
+      if (!raw || typeof raw !== "object") return base;
+
+      const rawLeads = raw.leads || {};
+      const validFilters = ["all", "called", "not_called"];
+      const validSorts = ["manual", "fio_asc", "company_asc", "called_first", "uncalled_first"];
+
+      return {
+        theme: raw.theme === "dark" ? "dark" : "light",
+        updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : new Date().toISOString(),
+        leads: {
+          filterBy: validFilters.includes(rawLeads.filterBy) ? rawLeads.filterBy : "all",
+          sortBy: validSorts.includes(rawLeads.sortBy) ? rawLeads.sortBy : "manual",
+          items: Array.isArray(rawLeads.items)
+            ? rawLeads.items.map((l, idx) => ({
+                id: String(l.id || `l-${Date.now()}-${idx}`),
+                fio: String(l.fio || l.name || ""),
+                company: String(l.company || l.niche || ""),
+                phone: String(l.phone || l.contacts || ""),
+                comment: String(l.comment || l.comments || ""),
+                task: String(l.task || ""),
+                called: Boolean(l.called) || l.status === "called" || l.status === "Позвонил",
+                createdAt: typeof l.createdAt === "string" ? l.createdAt : new Date().toISOString()
+              }))
+            : []
+        },
+        sales: {
+          goalClients: Math.max(1, Number(raw.sales?.goalClients) || base.sales.goalClients),
+          baseOneTime: Math.max(0, Number(raw.sales?.baseOneTime) ?? base.sales.baseOneTime),
+          baseMonthly: Math.max(0, Number(raw.sales?.baseMonthly) ?? base.sales.baseMonthly),
+          clients: Array.isArray(raw.sales?.clients)
+            ? raw.sales.clients.map((c, idx) => ({
+                id: String(c.id || `c-${Date.now()}-${idx}`),
+                name: String(c.name || `Клиент #${idx + 1}`),
+                done: Boolean(c.done),
+                oneTime: c.oneTime === "" || c.oneTime === null || c.oneTime === undefined ? null : Math.max(0, Number(c.oneTime) || 0),
+                monthly: c.monthly === "" || c.monthly === null || c.monthly === undefined ? null : Math.max(0, Number(c.monthly) || 0)
+              }))
+            : base.sales.clients
+        },
+        dept1: {
+          viewMode: ["all", "specialists", "industries"].includes(raw.dept1?.viewMode) ? raw.dept1.viewMode : "all",
+          selectedCategory: String(raw.dept1?.selectedCategory || "Все"),
+          specialists: Array.isArray(raw.dept1?.specialists) && raw.dept1.specialists.length
+            ? raw.dept1.specialists.map(String)
+            : base.dept1.specialists,
+          industries: Array.isArray(raw.dept1?.industries) && raw.dept1.industries.length
+            ? raw.dept1.industries.map(String)
+            : base.dept1.industries,
+          tasks: Array.isArray(raw.dept1?.tasks)
+            ? raw.dept1.tasks.map((t, idx) => ({
+                id: String(t.id || `d1-${Date.now()}-${idx}`),
+                title: String(t.title || ""),
+                mode: t.mode === "industries" ? "industries" : "specialists",
+                category: String(t.category || "Общее"),
+                done: Boolean(t.done)
+              }))
+            : base.dept1.tasks
+        },
+        dept2: {
+          tasks: Array.isArray(raw.dept2?.tasks)
+            ? raw.dept2.tasks.map((t, idx) => ({
+                id: String(t.id || `d2-${Date.now()}-${idx}`),
+                title: String(t.title || ""),
+                done: Boolean(t.done)
+              }))
+            : base.dept2.tasks
+        }
+      };
+    }
+
+    // Загружает локальное состояние из localStorage с защитой от ошибок чтения
+    function loadLocalState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return cloneDefault();
+        return normalizeState(JSON.parse(raw));
+      } catch {
+        return cloneDefault();
+      }
+    }
+
+    let state = loadLocalState();
+
+    // Отображает уведомление или окно подтверждения вместо alert()/confirm()
+    function showNotice(message, onConfirm = null) {
+      const backdrop = document.getElementById("noticeModalBackdrop");
+      const msgEl = document.getElementById("noticeModalMessage");
+      const cancelBtn = document.getElementById("noticeCancelBtn");
+      const okBtn = document.getElementById("noticeOkBtn");
+      if (!backdrop || !msgEl || !cancelBtn || !okBtn) return;
+
+      msgEl.textContent = String(message || "");
+      if (typeof onConfirm === "function") {
+        pendingConfirmCallback = onConfirm;
+        cancelBtn.style.display = "inline-block";
+        okBtn.textContent = "Подтвердить";
+      } else {
+        pendingConfirmCallback = null;
+        cancelBtn.style.display = "none";
+        okBtn.textContent = "ОК";
+      }
+      backdrop.style.display = "flex";
+    }
+
+    // Обновляет индикатор состояния синхронизации в нижней строке
+    function setSyncStatus(text) {
+      const el = document.getElementById("syncStatus");
+      if (el) el.textContent = `· ${text}`;
+    }
+
+    // Сохраняет данные в localStorage и ставит в очередь отправку в Supabase
+    function saveState(touchTimestamp = true) {
+      if (touchTimestamp) {
+        state.updatedAt = new Date().toISOString();
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.error("Ошибка записи в localStorage:", err);
+      }
+
+      if (sbClient) {
+        setSyncStatus("сохранение в Supabase...");
+        clearTimeout(cloudPushTimer);
+        cloudPushTimer = setTimeout(pushToCloud, 450);
+      } else {
+        setSyncStatus("локально");
+      }
+    }
+
+    // Отправляет состояние в таблицу planner_state (id = 'main')
+    async function pushToCloud() {
+      if (!sbClient) return;
+      try {
+        const { error } = await sbClient
+          .from("planner_state")
+          .upsert({
+            id: PLANNER_ROW_ID,
+            data: state,
+            updated_at: state.updatedAt
+          });
+
+        if (error) {
+          console.error("Supabase upsert error:", error);
+          setSyncStatus("ошибка синхронизации с Supabase");
+        } else {
+          setSyncStatus("синхронизировано с Supabase");
+        }
+      } catch (err) {
+        console.error("Supabase network error:", err);
+        setSyncStatus("офлайн (сохранено локально)");
+      }
+    }
+
+    // Загружает актуальное состояние из Supabase при запуске
+    async function pullFromCloud() {
+      if (!sbClient) {
+        setSyncStatus("локально");
+        return;
+      }
+      setSyncStatus("проверка Supabase...");
+      try {
+        const { data, error } = await sbClient
+          .from("planner_state")
+          .select("data, updated_at")
+          .eq("id", PLANNER_ROW_ID)
+          .single();
+
+        if (error || !data || !data.data || Object.keys(data.data).length === 0) {
+          setSyncStatus("синхронизировано с Supabase");
+          return;
+        }
+
+        const cloudState = normalizeState(data.data);
+        const cloudTime = new Date(data.updated_at || cloudState.updatedAt || 0).getTime();
+        const localTime = new Date(state.updatedAt || 0).getTime();
+
+        if (cloudTime >= localTime) {
+          state = cloudState;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          } catch (err) {
+            console.error("Ошибка кеширования облачного состояния:", err);
+          }
+          renderAll();
+        }
+        setSyncStatus("синхронизировано с Supabase");
+      } catch (err) {
+        console.error("Supabase pull error:", err);
+        setSyncStatus("локально (нет связи с Supabase)");
+      }
+    }
+
+    // Подписывается на изменения строки id = 'main' в Supabase Realtime
+    function subscribeToCloud() {
+      if (!sbClient) return;
+      const isSandbox =
+        typeof window !== "undefined" &&
+        (window.location.protocol === "blob:" ||
+          window.location.hostname.includes("scf.usercontent.goog") ||
+          typeof WebSocket === "undefined");
+      if (isSandbox) return;
+
+      try {
+        sbClient
+          .channel("planner-main-sync")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "planner_state",
+              filter: `id=eq.${PLANNER_ROW_ID}`
+            },
+            (payload) => {
+              const nextRaw = payload.new?.data;
+              const nextTime = new Date(payload.new?.updated_at || nextRaw?.updatedAt || 0).getTime();
+              const localTime = new Date(state.updatedAt || 0).getTime();
+
+              if (nextRaw && nextTime > localTime) {
+                state = normalizeState(nextRaw);
+                try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (err) {
+                  console.error("Ошибка обновления localStorage по Realtime:", err);
+                }
+                renderAll();
+                setSyncStatus("синхронизировано с Supabase");
+              }
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.error("Ошибка подписки Supabase Realtime:", err);
+      }
+    }
+
+    function formatRub(num) {
+      return `${Number(num || 0).toLocaleString("ru-RU")} ₽`;
+    }
+
+    function getClientAmounts(client) {
+      const oneTime = client.oneTime === null || client.oneTime === undefined ? state.sales.baseOneTime : client.oneTime;
+      const monthly = client.monthly === null || client.monthly === undefined ? state.sales.baseMonthly : client.monthly;
+      return { oneTime, monthly };
+    }
+
+    function applyTheme() {
+      document.body.classList.toggle("dark", state.theme === "dark");
+      const btn = document.getElementById("themeBtn");
+      if (btn) btn.textContent = state.theme === "dark" ? "🌙" : "🙂";
+    }
+
+    // Рендерит таблицу контактов под верхними колонками
+    function renderLeads() {
+      const { items, filterBy, sortBy } = state.leads;
+      const calledCount = items.filter((l) => l.called).length;
+
+      const counterEl = document.getElementById("leadsCounter");
+      if (counterEl) counterEl.textContent = `${calledCount} / ${items.length}`;
+
+      const filterEl = document.getElementById("leadFilterSelect");
+      if (filterEl) filterEl.value = filterBy;
+
+      const sortEl = document.getElementById("leadSortSelect");
+      if (sortEl) sortEl.value = sortBy;
+
+      const q = leadSearchQuery.trim().toLowerCase();
+      let list = items.filter((l) => {
+        if (filterBy === "called" && !l.called) return false;
+        if (filterBy === "not_called" && l.called) return false;
+        if (!q) return true;
+        return (
+          l.fio.toLowerCase().includes(q) ||
+          l.company.toLowerCase().includes(q) ||
+          l.phone.toLowerCase().includes(q) ||
+          l.comment.toLowerCase().includes(q) ||
+          l.task.toLowerCase().includes(q)
+        );
+      });
+
+      if (sortBy === "fio_asc") {
+        list = [...list].sort((a, b) => a.fio.localeCompare(b.fio, "ru"));
+      } else if (sortBy === "company_asc") {
+        list = [...list].sort((a, b) => a.company.localeCompare(b.company, "ru"));
+      } else if (sortBy === "called_first") {
+        list = [...list].sort((a, b) => Number(b.called) - Number(a.called));
+      } else if (sortBy === "uncalled_first") {
+        list = [...list].sort((a, b) => Number(a.called) - Number(b.called));
+      }
+
+      const tbody = document.getElementById("leadList");
+      if (!tbody) return;
+
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty">Контактов пока нет. Добавьте строку выше, вставьте списком или загрузите файл.</div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list
+        .map(
+          (l) => `
+            <tr class="lead-row" data-lead-id="${escapeAttr(l.id)}">
+              <td><input type="text" class="lead-fio-edit" value="${escapeAttr(l.fio)}" placeholder="ФИО" /></td>
+              <td><input type="text" class="lead-company-edit" value="${escapeAttr(l.company)}" placeholder="Компания" /></td>
+              <td><input type="text" class="lead-phone-edit" value="${escapeAttr(l.phone)}" placeholder="Контакты" /></td>
+              <td>
+                <label class="check-label" style="font-size: 12px; font-weight: 500;">
+                  <input type="checkbox" class="lead-called-check" ${l.called ? "checked" : ""} />
+                  <span>${l.called ? "Позвонил" : "Не позвонил"}</span>
+                </label>
+              </td>
+              <td><input type="text" class="lead-comment-input" value="${escapeAttr(l.comment)}" placeholder="Комментарии..." /></td>
+              <td><input type="text" class="lead-task-input" value="${escapeAttr(l.task)}" placeholder="Какие услуги, продукты..." /></td>
+              <td style="text-align: center;"><button type="button" class="del-btn lead-del" title="Удалить">✕</button></td>
+            </tr>
+          `
+        )
+        .join("");
+    }
+
+    // Рендерит колонку «1. План продаж»
+    function renderSales() {
+      const { goalClients, baseOneTime, baseMonthly, clients } = state.sales;
+      const doneClients = clients.filter((c) => c.done);
+      const doneCount = doneClients.length;
+      const remaining = Math.max(0, goalClients - doneCount);
+      const percent = Math.min(100, Math.round((doneCount / Math.max(1, goalClients)) * 100));
+
+      let actualOneTime = 0;
+      let actualMonthly = 0;
+      doneClients.forEach((c) => {
+        const amt = getClientAmounts(c);
+        actualOneTime += amt.oneTime;
+        actualMonthly += amt.monthly;
+      });
+
+      const targetOneTimeTotal = goalClients * baseOneTime;
+      const targetMonthlyTotal = goalClients * baseMonthly;
+
+      const goalInput = document.getElementById("goalInput");
+      const baseOneInput = document.getElementById("baseOneTimeInput");
+      const baseMonInput = document.getElementById("baseMonthlyInput");
+      if (goalInput) goalInput.value = goalClients;
+      if (baseOneInput) baseOneInput.value = baseOneTime;
+      if (baseMonInput) baseMonInput.value = baseMonthly;
+
+      const counterEl = document.getElementById("salesCounter");
+      const subEl = document.getElementById("salesSubtitle");
+      const remEl = document.getElementById("remainingLabel");
+      const pctEl = document.getElementById("percentLabel");
+      const fillEl = document.getElementById("progressFill");
+      if (counterEl) counterEl.textContent = `${doneCount} / ${goalClients}`;
+      if (subEl) subEl.textContent = `Цель: ${goalClients} клиентов · ${formatRub(baseOneTime)} разово + ${formatRub(baseMonthly)}/мес`;
+      if (remEl) remEl.textContent = `Осталось до цели: ${remaining}`;
+      if (pctEl) pctEl.textContent = `${percent}%`;
+      if (fillEl) fillEl.style.width = `${percent}%`;
+
+      const actOneEl = document.getElementById("actualOneTime");
+      const tgtOneEl = document.getElementById("targetOneTime");
+      const actMonEl = document.getElementById("actualMonthly");
+      const tgtMonEl = document.getElementById("targetMonthly");
+      if (actOneEl) actOneEl.textContent = formatRub(actualOneTime);
+      if (tgtOneEl) tgtOneEl.textContent = `цель: ${formatRub(targetOneTimeTotal)}`;
+      if (actMonEl) actMonEl.textContent = `${formatRub(actualMonthly)}/мес`;
+      if (tgtMonEl) tgtMonEl.textContent = `цель: ${formatRub(targetMonthlyTotal)}/мес`;
+
+      const cOneInput = document.getElementById("clientOneTimeInput");
+      const cMonInput = document.getElementById("clientMonthlyInput");
+      if (cOneInput) cOneInput.placeholder = `Разово (по умолч. ${baseOneTime})`;
+      if (cMonInput) cMonInput.placeholder = `Ведение/мес (по умолч. ${baseMonthly})`;
+
+      const listEl = document.getElementById("clientList");
+      if (!listEl) return;
+
+      if (!clients.length) {
+        listEl.innerHTML = `<div class="empty">Пока нет клиентов. Добавьте первого выше.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = clients
+        .map((c) => {
+          const amt = getClientAmounts(c);
+          return `
+            <div class="client-item" data-client-id="${escapeAttr(c.id)}">
+              <div class="client-top">
+                <label class="check-label">
+                  <input type="checkbox" class="client-check" ${c.done ? "checked" : ""} />
+                  <span class="${c.done ? "done-text" : ""}">${escapeHtml(c.name)}</span>
+                </label>
+                <span class="client-amount">${formatRub(amt.oneTime)} + ${formatRub(amt.monthly)}/м</span>
+                <button type="button" class="del-btn client-del" title="Удалить">✕</button>
+              </div>
+              <div class="client-overrides">
+                <input type="number" class="client-one-input" min="0" step="500"
+                  placeholder="Разово: ${baseOneTime}" value="${c.oneTime ?? ""}" />
+                <input type="number" class="client-mon-input" min="0" step="500"
+                  placeholder="Ведение: ${baseMonthly}" value="${c.monthly ?? ""}" />
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    // Обновляет список направлений для выбранного режима в Отделе 1
+    function populateSubcatSelect() {
+      const modeSelect = document.getElementById("taskModeSelect");
+      const subcatSelect = document.getElementById("taskSubcatSelect");
+      if (!modeSelect || !subcatSelect) return;
+
+      const items = modeSelect.value === "industries"
+        ? state.dept1.industries
+        : state.dept1.specialists;
+      const current = subcatSelect.value;
+
+      subcatSelect.innerHTML = items
+        .map((item) => `<option value="${escapeAttr(item)}">${escapeHtml(item)}</option>`)
+        .join("");
+
+      if (items.includes(current)) {
+        subcatSelect.value = current;
+      } else if (
+        state.dept1.selectedCategory &&
+        state.dept1.selectedCategory !== "Все" &&
+        items.includes(state.dept1.selectedCategory)
+      ) {
+        subcatSelect.value = state.dept1.selectedCategory;
+      }
+    }
+
+    // Рендерит колонку «2. Отдел 1: Услуги и ниши»
+    function renderDept1() {
+      const { viewMode, selectedCategory, tasks } = state.dept1;
+
+      document.querySelectorAll("#dept1Tabs .tab-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === viewMode);
+      });
+
+      const catBox = document.getElementById("catBox");
+      const chipList = document.getElementById("chipList");
+      const newCatInput = document.getElementById("newCatInput");
+
+      if (catBox && chipList && newCatInput) {
+        if (viewMode === "all") {
+          catBox.style.display = "none";
+        } else {
+          catBox.style.display = "block";
+          const catBoxTitle = document.getElementById("catBoxTitle");
+          if (catBoxTitle) {
+            catBoxTitle.textContent = viewMode === "specialists" ? "Специалисты:" : "Отрасли бизнеса:";
+          }
+          newCatInput.placeholder =
+            viewMode === "specialists"
+              ? "Новый специалист (напр., Врачи, Логисты)..."
+              : "Новая отрасль (напр., Клиники, Авто)...";
+
+          const pool = viewMode === "specialists" ? state.dept1.specialists : state.dept1.industries;
+          const chips = ["Все", ...pool];
+          if (!chips.includes(selectedCategory)) {
+            state.dept1.selectedCategory = "Все";
+          }
+
+          chipList.innerHTML = chips
+            .map(
+              (cat) => `
+                <button type="button" class="chip ${state.dept1.selectedCategory === cat ? "active" : ""}" data-cat="${escapeAttr(cat)}">
+                  ${escapeHtml(cat)}
+                </button>
+              `
+            )
+            .join("");
+        }
+      }
+
+      const modeSelect = document.getElementById("taskModeSelect");
+      if (modeSelect && (viewMode === "specialists" || viewMode === "industries")) {
+        modeSelect.value = viewMode;
+      }
+      populateSubcatSelect();
+
+      const filteredTasks = tasks.filter((t) => {
+        if (viewMode === "specialists") {
+          if (t.mode !== "specialists") return false;
+          if (state.dept1.selectedCategory !== "Все" && t.category !== state.dept1.selectedCategory) return false;
+          return true;
+        }
+        if (viewMode === "industries") {
+          if (t.mode !== "industries") return false;
+          if (state.dept1.selectedCategory !== "Все" && t.category !== state.dept1.selectedCategory) return false;
+          return true;
+        }
+        return true;
+      });
+
+      const doneCount = filteredTasks.filter((t) => t.done).length;
+      const counterEl = document.getElementById("dept1Counter");
+      if (counterEl) counterEl.textContent = `${doneCount}/${filteredTasks.length}`;
+
+      const listEl = document.getElementById("dept1TaskList");
+      if (!listEl) return;
+
+      if (!filteredTasks.length) {
+        listEl.innerHTML = `<div class="empty">Задач по выбранному фильтру пока нет.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filteredTasks
+        .map((t) => {
+          const scopeLabel = t.mode === "specialists" ? "Специалисты" : "Отрасли бизнеса";
+          return `
+            <div class="task-item" data-task-id="${escapeAttr(t.id)}">
+              <div class="task-row">
+                <label class="check-label">
+                  <input type="checkbox" class="d1-check" ${t.done ? "checked" : ""} />
+                  <span class="${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
+                </label>
+                <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
+              </div>
+              <div class="task-meta">${escapeHtml(scopeLabel)} · ${escapeHtml(t.category)}</div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    // Рендерит колонку «3. Отдел 2: Свой MVP»
+    function renderDept2() {
+      const tasks = state.dept2.tasks;
+      const doneCount = tasks.filter((t) => t.done).length;
+      const counterEl = document.getElementById("dept2Counter");
+      if (counterEl) counterEl.textContent = `${doneCount}/${tasks.length}`;
+
+      const listEl = document.getElementById("dept2TaskList");
+      if (!listEl) return;
+
+      if (!tasks.length) {
+        listEl.innerHTML = `<div class="empty">Добавьте первую задачу по своему MVP.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = tasks
+        .map(
+          (t) => `
+            <div class="task-item" data-task-id="${escapeAttr(t.id)}">
+              <div class="task-row">
+                <label class="check-label">
+                  <input type="checkbox" class="d2-check" ${t.done ? "checked" : ""} />
+                  <span class="${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
+                </label>
+                <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
+              </div>
+            </div>
+          `
+        )
+        .join("");
+    }
+
+    // Перерисовывает все разделы планера
+    function renderAll() {
+      applyTheme();
+      renderLeads();
+      renderSales();
+      renderDept1();
+      renderDept2();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replaceAll("'", "&#39;");
+    }
+
+    function bindEventSafe(id, eventName, handler) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener(eventName, handler);
+      }
+    }
+
+    // Создаёт нормализованный объект контакта
+    function createLeadRecord(fio = "", company = "", phone = "", comment = "", task = "", called = false, idx = 0) {
+      return {
+        id: `l-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+        fio: String(fio || "").trim(),
+        company: String(company || "").trim(),
+        phone: String(phone || "").trim(),
+        comment: String(comment || "").trim(),
+        task: String(task || "").trim(),
+        called: Boolean(called),
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    // Разбирает текст, CSV/TSV/TXT или JSON в массив контактов
+    function parseContactsText(rawText) {
+      const text = String(rawText || "").trim();
+      if (!text) return [];
+
+      if (text.startsWith("[") || text.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(text);
+          const arr = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed.items)
+              ? parsed.items
+              : Array.isArray(parsed.leads?.items)
+                ? parsed.leads.items
+                : [];
+          return arr
+            .map((item, i) => {
+              if (typeof item === "string") return createLeadRecord(item, "", "", "", "", false, i);
+              if (item && typeof item === "object") {
+                const fio = item.fio || item.name || item.title || item.full_name || "";
+                const company = item.company || item.niche || item.organization || "";
+                const phone = item.phone || item.contacts || item.tel || item.telegram || "";
+                const comment = item.comment || item.comments || item.notes || "";
+                const task = item.task || item.services || item.product || "";
+                const called = Boolean(item.called) || item.status === "called" || item.status === "Позвонил";
+                if (!fio && !company && !phone && !comment && !task) return null;
+                return createLeadRecord(fio, company, phone, comment, task, called, i);
+              }
+              return null;
+            })
+            .filter(Boolean);
+        } catch {
+          // Если строка не является корректным JSON, продолжаем построчный разбор
+        }
+      }
+
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const result = [];
+
+      lines.forEach((line, i) => {
+        const lower = line.toLowerCase();
+        if (i === 0 && (lower.startsWith("фио") || lower.startsWith("fio") || lower.startsWith("имя"))) {
+          return;
+        }
+        const sep = line.includes("|") ? "|" : line.includes(";") ? ";" : line.includes("\t") ? "\t" : ",";
+        const parts = line.split(sep).map((p) => p.trim().replace(/^["']|["']$/g, ""));
+        const fio = parts[0] || "";
+        const company = parts[1] || "";
+        const phone = parts[2] || "";
+        const comment = parts[3] || "";
+        const task = parts.slice(4).join(" · ") || "";
+        if (fio || company || phone || comment || task) {
+          result.push(createLeadRecord(fio, company, phone, comment, task, false, i));
+        }
+      });
+
+      return result;
+    }
+
+    // Добавляет одну строку контакта из формы в разделе «Контакты»
+    function addLeadSingle() {
+      const fioEl = document.getElementById("leadFioInput");
+      const companyEl = document.getElementById("leadCompanyInput");
+      const phoneEl = document.getElementById("leadPhoneInput");
+      const commentEl = document.getElementById("leadCommentInput");
+      const taskEl = document.getElementById("leadTaskInput");
+
+      const fio = fioEl ? fioEl.value.trim() : "";
+      const company = companyEl ? companyEl.value.trim() : "";
+      const phone = phoneEl ? phoneEl.value.trim() : "";
+      const comment = commentEl ? commentEl.value.trim() : "";
+      const task = taskEl ? taskEl.value.trim() : "";
+
+      if (!fio && !company && !phone && !comment && !task) {
+        showNotice("Заполните хотя бы одно поле контакта.");
+        return;
+      }
+
+      state.leads.items.unshift(createLeadRecord(fio, company, phone, comment, task, false, 0));
+
+      if (fioEl) fioEl.value = "";
+      if (companyEl) companyEl.value = "";
+      if (phoneEl) phoneEl.value = "";
+      if (commentEl) commentEl.value = "";
+      if (taskEl) taskEl.value = "";
+
+      renderLeads();
+      saveState();
+    }
+
+    // Обработчики модального окна уведомлений
+    bindEventSafe("noticeOkBtn", "click", () => {
+      const backdrop = document.getElementById("noticeModalBackdrop");
+      const cb = pendingConfirmCallback;
+      pendingConfirmCallback = null;
+      if (backdrop) backdrop.style.display = "none";
+      if (typeof cb === "function") cb();
+    });
+
+    bindEventSafe("noticeCancelBtn", "click", () => {
+      const backdrop = document.getElementById("noticeModalBackdrop");
+      pendingConfirmCallback = null;
+      if (backdrop) backdrop.style.display = "none";
+    });
+
+    // Обработчики раздела «Контакты»
+    bindEventSafe("addLeadBtn", "click", addLeadSingle);
+    ["leadFioInput", "leadCompanyInput", "leadPhoneInput", "leadCommentInput", "leadTaskInput"].forEach((id) => {
+      bindEventSafe(id, "keydown", (e) => {
+        if (e.key === "Enter") addLeadSingle();
+      });
+    });
+
+    bindEventSafe("toggleBulkLeadsBtn", "click", () => {
+      const box = document.getElementById("bulkLeadsBox");
+      if (!box) return;
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    });
+
+    bindEventSafe("saveBulkLeadsBtn", "click", () => {
+      const ta = document.getElementById("bulkLeadsTextarea");
+      if (!ta) return;
+      const parsed = parseContactsText(ta.value);
+      if (!parsed.length) {
+        showNotice("Введите хотя бы одну строку с контактом.");
+        return;
+      }
+      state.leads.items.unshift(...parsed);
+      ta.value = "";
+      const box = document.getElementById("bulkLeadsBox");
+      if (box) box.style.display = "none";
+      renderLeads();
+      saveState();
+      showNotice(`Добавлено контактов: ${parsed.length}.`);
+    });
+
+    bindEventSafe("importLeadsFileBtn", "click", () => {
+      const fileInput = document.getElementById("leadsFileInput");
+      if (fileInput) fileInput.click();
+    });
+
+    bindEventSafe("leadsFileInput", "change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const parsed = parseContactsText(String(reader.result || ""));
+        if (!parsed.length) {
+          showNotice("В файле не найдено контактов для загрузки.");
+        } else {
+          state.leads.items.unshift(...parsed);
+          renderLeads();
+          saveState();
+          showNotice(`Загружено контактов: ${parsed.length}.`);
+        }
+        e.target.value = "";
+      };
+      reader.readAsText(file);
+    });
+
+    bindEventSafe("leadSearchInput", "input", (e) => {
+      leadSearchQuery = e.target.value;
+      renderLeads();
+    });
+
+    bindEventSafe("leadFilterSelect", "change", (e) => {
+      state.leads.filterBy = e.target.value;
+      renderLeads();
+      saveState();
+    });
+
+    bindEventSafe("leadSortSelect", "change", (e) => {
+      state.leads.sortBy = e.target.value;
+      renderLeads();
+      saveState();
+    });
+
+    bindEventSafe("leadList", "change", (e) => {
+      const row = e.target.closest(".lead-row");
+      if (!row) return;
+      const lead = state.leads.items.find((l) => l.id === row.dataset.leadId);
+      if (!lead) return;
+
+      if (e.target.classList.contains("lead-called-check")) {
+        lead.called = e.target.checked;
+        renderLeads();
+        saveState();
+      } else if (e.target.classList.contains("lead-fio-edit")) {
+        lead.fio = e.target.value;
+        saveState();
+      } else if (e.target.classList.contains("lead-company-edit")) {
+        lead.company = e.target.value;
+        saveState();
+      } else if (e.target.classList.contains("lead-phone-edit")) {
+        lead.phone = e.target.value;
+        saveState();
+      } else if (e.target.classList.contains("lead-comment-input")) {
+        lead.comment = e.target.value;
+        saveState();
+      } else if (e.target.classList.contains("lead-task-input")) {
+        lead.task = e.target.value;
+        saveState();
+      }
+    });
+
+    bindEventSafe("leadList", "click", (e) => {
+      if (!e.target.classList.contains("lead-del")) return;
+      const row = e.target.closest(".lead-row");
+      if (!row) return;
+      state.leads.items = state.leads.items.filter((l) => l.id !== row.dataset.leadId);
+      renderLeads();
+      saveState();
+    });
+
+    // Обработчики нижней строки управления
+    bindEventSafe("themeBtn", "click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      applyTheme();
+      saveState();
+    });
+
+    bindEventSafe("resetBtn", "click", () => {
+      showNotice("Сбросить планер к исходным настройкам?", () => {
+        state = cloneDefault();
+        renderAll();
+        saveState();
+        showNotice("Планер сброшен к исходным настройкам.");
+      });
+    });
+
+    bindEventSafe("exportBtn", "click", () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `planner-backup-${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    bindEventSafe("importBtn", "click", () => {
+      const fileInput = document.getElementById("importFile");
+      if (fileInput) fileInput.click();
+    });
+
+    bindEventSafe("importFile", "change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          state = normalizeState(parsed);
+          renderAll();
+          saveState();
+          showNotice("Данные из JSON успешно загружены.");
+        } catch {
+          showNotice("Не удалось прочитать JSON-файл.");
+        }
+        e.target.value = "";
+      };
+      reader.readAsText(file);
+    });
+
+    // Обработчики колонки «1. План продаж»
+    bindEventSafe("goalInput", "input", (e) => {
+      state.sales.goalClients = Math.max(1, Number(e.target.value) || 1);
+      renderSales();
+      saveState();
+    });
+
+    bindEventSafe("baseOneTimeInput", "input", (e) => {
+      state.sales.baseOneTime = Math.max(0, Number(e.target.value) || 0);
+      renderSales();
+      saveState();
+    });
+
+    bindEventSafe("baseMonthlyInput", "input", (e) => {
+      state.sales.baseMonthly = Math.max(0, Number(e.target.value) || 0);
+      renderSales();
+      saveState();
+    });
+
+    function addClient() {
+      const nameEl = document.getElementById("clientNameInput");
+      const oneEl = document.getElementById("clientOneTimeInput");
+      const monEl = document.getElementById("clientMonthlyInput");
+      if (!nameEl) return;
+      const name = nameEl.value.trim();
+      if (!name) return;
+
+      const oneTime = !oneEl || oneEl.value.trim() === "" ? null : Math.max(0, Number(oneEl.value) || 0);
+      const monthly = !monEl || monEl.value.trim() === "" ? null : Math.max(0, Number(monEl.value) || 0);
+
+      state.sales.clients.unshift({
+        id: `c-${Date.now()}`,
+        name,
+        done: false,
+        oneTime,
+        monthly
+      });
+
+      nameEl.value = "";
+      if (oneEl) oneEl.value = "";
+      if (monEl) monEl.value = "";
+      renderSales();
+      saveState();
+    }
+
+    bindEventSafe("addClientBtn", "click", addClient);
+    bindEventSafe("clientNameInput", "keydown", (e) => {
+      if (e.key === "Enter") addClient();
+    });
+
+    bindEventSafe("clientList", "change", (e) => {
+      const item = e.target.closest(".client-item");
+      if (!item) return;
+      const client = state.sales.clients.find((c) => c.id === item.dataset.clientId);
+      if (!client) return;
+
+      if (e.target.classList.contains("client-check")) {
+        client.done = e.target.checked;
+        renderSales();
+        saveState();
+      } else if (e.target.classList.contains("client-one-input")) {
+        client.oneTime = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
+        renderSales();
+        saveState();
+      } else if (e.target.classList.contains("client-mon-input")) {
+        client.monthly = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
+        renderSales();
+        saveState();
+      }
+    });
+
+    bindEventSafe("clientList", "click", (e) => {
+      if (!e.target.classList.contains("client-del")) return;
+      const item = e.target.closest(".client-item");
+      if (!item) return;
+      state.sales.clients = state.sales.clients.filter((c) => c.id !== item.dataset.clientId);
+      renderSales();
+      saveState();
+    });
+
+    // Обработчики колонки «2. Отдел 1: Услуги и ниши»
+    bindEventSafe("dept1Tabs", "click", (e) => {
+      const btn = e.target.closest(".tab-btn");
+      if (!btn) return;
+      state.dept1.viewMode = btn.dataset.mode;
+      state.dept1.selectedCategory = "Все";
+      renderDept1();
+      saveState();
+    });
+
+    bindEventSafe("chipList", "click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      state.dept1.selectedCategory = chip.dataset.cat;
+      renderDept1();
+      saveState();
+    });
+
+    bindEventSafe("resetFilterBtn", "click", () => {
+      state.dept1.selectedCategory = "Все";
+      renderDept1();
+      saveState();
+    });
+
+    function addCategory() {
+      const input = document.getElementById("newCatInput");
+      if (!input) return;
+      const val = input.value.trim();
+      if (!val) return;
+      const targetList = state.dept1.viewMode === "industries" ? state.dept1.industries : state.dept1.specialists;
+      if (!targetList.includes(val)) {
+        targetList.push(val);
+      }
+      state.dept1.selectedCategory = val;
+      input.value = "";
+      renderDept1();
+      saveState();
+    }
+
+    bindEventSafe("addCatBtn", "click", addCategory);
+    bindEventSafe("newCatInput", "keydown", (e) => {
+      if (e.key === "Enter") addCategory();
+    });
+
+    bindEventSafe("taskModeSelect", "change", populateSubcatSelect);
+
+    function addDept1Task() {
+      const input = document.getElementById("dept1TaskInput");
+      if (!input) return;
+      const title = input.value.trim();
+      if (!title) return;
+      const mode = document.getElementById("taskModeSelect")?.value || "specialists";
+      const category = document.getElementById("taskSubcatSelect")?.value || "Общее";
+
+      state.dept1.tasks.unshift({
+        id: `d1-${Date.now()}`,
+        title,
+        mode,
+        category,
+        done: false
+      });
+
+      input.value = "";
+      renderDept1();
+      saveState();
+    }
+
+    bindEventSafe("addDept1TaskBtn", "click", addDept1Task);
+    bindEventSafe("dept1TaskInput", "keydown", (e) => {
+      if (e.key === "Enter") addDept1Task();
+    });
+
+    bindEventSafe("dept1TaskList", "change", (e) => {
+      if (!e.target.classList.contains("d1-check")) return;
+      const item = e.target.closest(".task-item");
+      const task = state.dept1.tasks.find((t) => t.id === item?.dataset.taskId);
+      if (!task) return;
+      task.done = e.target.checked;
+      renderDept1();
+      saveState();
+    });
+
+    bindEventSafe("dept1TaskList", "click", (e) => {
+      if (!e.target.classList.contains("d1-del")) return;
+      const item = e.target.closest(".task-item");
+      if (!item) return;
+      state.dept1.tasks = state.dept1.tasks.filter((t) => t.id !== item.dataset.taskId);
+      renderDept1();
+      saveState();
+    });
+
+    // Обработчики колонки «3. Отдел 2: Свой MVP»
+    function addDept2Task() {
+      const input = document.getElementById("dept2TaskInput");
+      if (!input) return;
+      const title = input.value.trim();
+      if (!title) return;
+
+      state.dept2.tasks.unshift({
+        id: `d2-${Date.now()}`,
+        title,
+        done: false
+      });
+
+      input.value = "";
+      renderDept2();
+      saveState();
+    }
+
+    bindEventSafe("addDept2TaskBtn", "click", addDept2Task);
+    bindEventSafe("dept2TaskInput", "keydown", (e) => {
+      if (e.key === "Enter") addDept2Task();
+    });
+
+    bindEventSafe("dept2TaskList", "change", (e) => {
+      if (!e.target.classList.contains("d2-check")) return;
+      const item = e.target.closest(".task-item");
+      const task = state.dept2.tasks.find((t) => t.id === item?.dataset.taskId);
+      if (!task) return;
+      task.done = e.target.checked;
+      renderDept2();
+      saveState();
+    });
+
+    bindEventSafe("dept2TaskList", "click", (e) => {
+      if (!e.target.classList.contains("d2-del")) return;
+      const item = e.target.closest(".task-item");
+      if (!item) return;
+      state.dept2.tasks = state.dept2.tasks.filter((t) => t.id !== item.dataset.taskId);
+      renderDept2();
+      saveState();
+    });
+
+    // Инициализация интерфейса и синхронизации
+    renderAll();
+    pullFromCloud();
+    subscribeToCloud();
+  </script>
+</body>
+</html>
