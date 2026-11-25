@@ -549,7 +549,7 @@
 
     .task-edit-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 130px 155px;
+      grid-template-columns: minmax(0, 1fr);
       gap: 6px;
       margin-top: 8px;
     }
@@ -567,8 +567,13 @@
     .task-edit-row input,
     .task-edit-row select {
       background: var(--bg);
-      padding: 6px 8px;
-      font-size: 12px;
+      padding: 8px 10px;
+      font-size: 13px;
+      min-width: 0;
+    }
+
+    .task-edit-row input:focus {
+      box-shadow: inset 0 0 0 1px var(--accent-soft);
     }
 
     .empty {
@@ -818,10 +823,10 @@
         <!-- 1. Объединённый блок: План продаж · Задачи, заметки и комментарии по клиентам -->
         <section class="section-block" id="salesSection">
           <div class="section-head">
-            <h2 class="section-title">1. План продаж · Задачи, заметки и комментарии</h2>
+            <h2 class="section-title">План продаж</h2>
             <span class="counter" id="salesCounter">0 / 30</span>
           </div>
-          <p class="subtitle" id="salesSubtitle">Цель: 30 клиентов · 15 000 ₽ разово + 5 000 ₽/мес</p>
+
 
           <div class="inputs-row">
             <div class="field">
@@ -885,14 +890,13 @@
           </div>
         </section>
 
-        <!-- 2. Отдел 1: Услуги и ниши -->
+        <!-- Услуги и ниши -->
         <section class="section-block" id="dept1Section">
           <div class="section-head">
-            <h2 class="section-title">2. Отдел 1: Услуги и ниши</h2>
-            <span class="badge more">Больше времени</span>
+            <h2 class="section-title">Услуги и ниши</h2>
+
           </div>
           <div class="section-head" style="margin-bottom: 4px;">
-            <p class="subtitle" style="margin: 0;">Чат-боты, ИИ-ассистенты/агенты, МойСклад, amoCRM, Битрикс24, 1С, задачи/календари</p>
             <span class="counter" id="dept1Counter">0/0</span>
           </div>
 
@@ -932,14 +936,13 @@
           <div class="task-list" id="dept1TaskList"></div>
         </section>
 
-        <!-- 3. Отдел 2: Свой MVP -->
+        <!-- Свои продукты -->
         <section class="section-block" id="dept2Section">
           <div class="section-head">
-            <h2 class="section-title">3. Отдел 2: Свой MVP</h2>
-            <span class="badge less">Меньше времени</span>
+            <h2 class="section-title">Свои продукты</h2>
+
           </div>
           <div class="section-head" style="margin-bottom: 10px;">
-            <p class="subtitle" style="margin: 0;">Чаты, ИИ-агенты, CRM, склад/финансы, задачи, календари, заметки, напоминания</p>
             <span class="counter" id="dept2Counter">0/0</span>
           </div>
 
@@ -1189,7 +1192,8 @@
           const existingIdx = prefixMap.get(num);
           list[existingIdx] = {
             ...list[existingIdx],
-            title: fullTitle,
+            // Сохраняем пользовательское название, если задача уже была отредактирована.
+            title: String(list[existingIdx].title || fullTitle),
             mode: list[existingIdx].mode || "general",
             category: list[existingIdx].mode === "general" ? "Общие задачи" : (list[existingIdx].category || "Общие задачи"),
             done: Boolean(list[existingIdx].done)
@@ -1205,7 +1209,27 @@
         }
       });
 
-      return list;
+      // Удаляем старые дубли: одинаковый номер задачи или одинаковый текст.
+      const unique = new Map();
+      for (const task of list) {
+        const title = String(task.title || "").trim();
+        const numbered = title.match(/^(\d{1,2})\./);
+        const key = numbered ? `number:${Number(numbered[1])}` : `title:${title.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ")}`;
+        const previous = unique.get(key);
+        if (!previous || (!previous.done && task.done)) unique.set(key, task);
+      }
+      return [...unique.values()];
+    }
+
+    function dedupeTasksByTitle(tasks) {
+      const unique = new Map();
+      for (const task of tasks) {
+        const key = String(task.title || "").trim().toLocaleLowerCase("ru-RU").replace(/\s+/g, " ");
+        if (!key) continue;
+        const previous = unique.get(key);
+        if (!previous || (!previous.done && task.done)) unique.set(key, task);
+      }
+      return [...unique.values()];
     }
 
     function normalizeState(raw) {
@@ -1241,6 +1265,7 @@
             done: Boolean(t.done)
           }))
         : base.dept2.tasks;
+      const uniqueDept2Tasks = dedupeTasksByTitle(rawDept2Tasks);
 
       return {
         theme: raw.theme === "dark" ? "dark" : "light",
@@ -1302,7 +1327,7 @@
           tasks: applySeed11ToDept1(rawDept1Tasks)
         },
         dept2: {
-          tasks: rawDept2Tasks
+          tasks: uniqueDept2Tasks
         }
       };
     }
@@ -1896,38 +1921,16 @@
       );
 
       listEl.innerHTML = filteredTasks
-        .map((t) => {
-          const catOptions = allCategories
-            .map(
-              (cat) =>
-                `<option value="${escapeAttr(cat)}" ${t.category === cat ? "selected" : ""}>${escapeHtml(cat)}</option>`
-            )
-            .join("");
-
-          return `
-            <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
-              <div class="task-row">
-                <span class="drag-handle" title="Перетащить">⋮⋮</span>
-                <label class="check-label">
-                  <input type="checkbox" class="d1-check" ${t.done ? "checked" : ""} />
-                  <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
-                </label>
-                <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
-              </div>
-              <div class="task-edit-row">
-                <input type="text" class="d1-title-edit" value="${escapeAttr(t.title)}" placeholder="Изменить задачу..." />
-                <select class="d1-mode-edit">
-                  <option value="general" ${t.mode === "general" ? "selected" : ""}>Общие задачи</option>
-                  <option value="specialists" ${t.mode === "specialists" ? "selected" : ""}>Специалисты</option>
-                  <option value="industries" ${t.mode === "industries" ? "selected" : ""}>Отрасли бизнеса</option>
-                </select>
-                <select class="d1-cat-edit" ${t.mode === "general" ? "disabled" : ""}>
-                  ${catOptions}
-                </select>
-              </div>
+        .map((t) => `
+          <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
+            <div class="task-row">
+              <span class="drag-handle" title="Перетащить">⋮⋮</span>
+              <input type="checkbox" class="d1-check" aria-label="Отметить задачу выполненной" ${t.done ? "checked" : ""} style="width:16px;height:16px;accent-color:var(--accent-soft);flex-shrink:0;" />
+              <input type="text" class="task-title-input d1-title-edit" value="${escapeAttr(t.title)}" aria-label="Текст задачи" />
+              <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
             </div>
-          `;
-        })
+          </div>
+        `)
         .join("");
     }
 
@@ -1951,23 +1954,16 @@
       }
 
       listEl.innerHTML = tasks
-        .map(
-          (t) => `
-            <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
-              <div class="task-row">
-                <span class="drag-handle" title="Перетащить">⋮⋮</span>
-                <label class="check-label">
-                  <input type="checkbox" class="d2-check" ${t.done ? "checked" : ""} />
-                  <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
-                </label>
-                <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
-              </div>
-              <div class="task-edit-row mvp-edit-row">
-                <input type="text" class="d2-title-edit" value="${escapeAttr(t.title)}" placeholder="Изменить задачу MVP..." />
-              </div>
+        .map((t) => `
+          <div class="task-item" data-task-id="${escapeAttr(t.id)}" draggable="true">
+            <div class="task-row">
+              <span class="drag-handle" title="Перетащить">⋮⋮</span>
+              <input type="checkbox" class="d2-check" aria-label="Отметить задачу выполненной" ${t.done ? "checked" : ""} style="width:16px;height:16px;accent-color:var(--accent-soft);flex-shrink:0;" />
+              <input type="text" class="task-title-input d2-title-edit" value="${escapeAttr(t.title)}" aria-label="Текст задачи" />
+              <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
             </div>
-          `
-        )
+          </div>
+        `)
         .join("");
     }
 
@@ -2637,6 +2633,10 @@
       if (!input) return;
       const title = input.value.trim();
       if (!title) return;
+      if (state.dept1.tasks.some((t) => t.title.trim().toLocaleLowerCase("ru-RU") === title.toLocaleLowerCase("ru-RU"))) {
+        showNotice("Такая задача уже есть в списке.");
+        return;
+      }
       const mode = document.getElementById("taskModeSelect")?.value || "specialists";
       const category = mode === "general"
         ? "Общие задачи"
@@ -2687,6 +2687,10 @@
       const title = input.value.trim();
       if (!title) return;
 
+      if (state.dept2.tasks.some((t) => t.title.trim().toLocaleLowerCase("ru-RU") === title.toLocaleLowerCase("ru-RU"))) {
+        showNotice("Такая задача уже есть в списке.");
+        return;
+      }
       state.dept2.tasks.push({
         id: `d2-${Date.now()}`,
         title,
@@ -2739,6 +2743,17 @@
       const listEl = document.getElementById(listId);
       if (!listEl) return;
 
+      listEl.addEventListener("dblclick", (e) => {
+        const title = e.target.closest(".task-title-text");
+        if (!title) return;
+        const item = title.closest(".task-item");
+        const editor = item?.querySelector(`.${titleInputClass}`);
+        if (editor) {
+          editor.focus();
+          editor.select();
+        }
+      });
+
       listEl.addEventListener("input", (e) => {
         if (!e.target.classList.contains(titleInputClass)) return;
         const item = e.target.closest(".task-item");
@@ -2749,30 +2764,6 @@
         if (span) span.textContent = task.title;
         saveState();
       });
-
-      if (deptKey === "dept1") {
-        listEl.addEventListener("change", (e) => {
-          const item = e.target.closest(".task-item");
-          const task = state.dept1.tasks.find((t) => t.id === item?.dataset.taskId);
-          if (!task) return;
-
-          if (e.target.classList.contains("d1-mode-edit")) {
-            task.mode = e.target.value;
-            syncTaskCategoryToMode(task);
-            renderDept1();
-            saveState();
-          } else if (e.target.classList.contains("d1-cat-edit")) {
-            task.category = e.target.value;
-            if (state.dept1.industries.includes(task.category) && task.mode !== "industries") {
-              task.mode = "industries";
-            } else if (state.dept1.specialists.includes(task.category) && task.mode !== "specialists") {
-              task.mode = "specialists";
-            }
-            renderDept1();
-            saveState();
-          }
-        });
-      }
 
       listEl.addEventListener("dragstart", (e) => {
         const item = e.target.closest(".task-item");
