@@ -409,6 +409,19 @@
       background: var(--bg);
     }
 
+    .client-notes-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .client-notes-grid input {
+      padding: 6px 8px;
+      font-size: 12px;
+      background: var(--bg);
+    }
+
     .del-btn {
       border: none;
       background: transparent;
@@ -510,8 +523,9 @@
       background: var(--control-bg);
     }
 
-    /* Блок «Контакты» под верхними колонками */
-    .contacts-section {
+    /* Нижние блоки: Контакты и Заметки */
+    .contacts-section,
+    .notes-section {
       width: 100%;
       padding-top: 6px;
     }
@@ -582,6 +596,58 @@
 
     .call-link:hover {
       opacity: 0.88;
+    }
+
+    .notes-composer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 1024px) {
+      .notes-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .note-card {
+      background: var(--control-bg);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .note-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .note-card input[type="text"],
+    .note-card textarea {
+      background: var(--bg);
+      font-size: 12px;
+      padding: 7px 9px;
+    }
+
+    .note-card textarea {
+      min-height: 76px;
     }
 
     /* Единая строка управления в самом низу страницы */
@@ -729,9 +795,13 @@
             <input type="text" id="clientNameInput" placeholder="Имя клиента или проект..." />
             <button type="button" class="primary" id="addClientBtn">+ Добавить</button>
           </div>
-          <div class="inputs-row two">
+          <div class="inputs-row two" style="margin-bottom: 8px;">
             <input type="number" id="clientOneTimeInput" placeholder="Разово (по умолч.)" min="0" step="500" />
             <input type="number" id="clientMonthlyInput" placeholder="Ведение/мес (по умолч.)" min="0" step="500" />
+          </div>
+          <div class="inputs-row two" style="margin-bottom: 12px;">
+            <input type="text" id="clientTaskInput" placeholder="Задачи по клиенту..." />
+            <input type="text" id="clientCommentInput" placeholder="Комментарии по клиенту..." />
           </div>
 
           <div class="client-list" id="clientList"></div>
@@ -860,6 +930,25 @@
           </table>
         </div>
       </section>
+
+      <!-- Нижний блок: Заметки -->
+      <section class="notes-section" id="notesSection">
+        <div class="section-head">
+          <h2 class="section-title">Заметки</h2>
+          <span class="counter" id="notesCounter">0</span>
+        </div>
+        <p class="subtitle">Свободные заметки, идеи, договорённости и быстрые записи</p>
+
+        <div class="notes-composer">
+          <input type="text" id="noteTitleInput" placeholder="Заголовок заметки (необязательно)..." />
+          <textarea id="noteBodyInput" placeholder="Напишите заметку..."></textarea>
+          <div>
+            <button type="button" class="primary" id="addNoteBtn">+ Добавить заметку</button>
+          </div>
+        </div>
+
+        <div class="notes-grid" id="notesList"></div>
+      </section>
     </div>
 
     <!-- Единая строка управления в самом низу страницы -->
@@ -921,9 +1010,9 @@
         baseOneTime: 15000,
         baseMonthly: 5000,
         clients: [
-          { id: "c1", name: "Клиент #1", done: false, oneTime: null, monthly: null },
-          { id: "c2", name: "Клиент #2", done: false, oneTime: null, monthly: null },
-          { id: "c3", name: "Клиент #3", done: false, oneTime: null, monthly: null }
+          { id: "c1", name: "Клиент #1", done: false, oneTime: null, monthly: null, task: "", comment: "" },
+          { id: "c2", name: "Клиент #2", done: false, oneTime: null, monthly: null, task: "", comment: "" },
+          { id: "c3", name: "Клиент #3", done: false, oneTime: null, monthly: null, task: "", comment: "" }
         ]
       },
       dept1: {
@@ -973,7 +1062,8 @@
           { id: "d2-2", title: "Собрать базовый интерфейс задач, календаря и заметок", done: false },
           { id: "d2-3", title: "Подключить единый поток сообщений и ИИ-ассистента", done: false }
         ]
-      }
+      },
+      notes: []
     };
 
     let leadSearchQuery = "";
@@ -1023,7 +1113,9 @@
                 name: String(c.name || `Клиент #${idx + 1}`),
                 done: Boolean(c.done),
                 oneTime: c.oneTime === "" || c.oneTime === null || c.oneTime === undefined ? null : Math.max(0, Number(c.oneTime) || 0),
-                monthly: c.monthly === "" || c.monthly === null || c.monthly === undefined ? null : Math.max(0, Number(c.monthly) || 0)
+                monthly: c.monthly === "" || c.monthly === null || c.monthly === undefined ? null : Math.max(0, Number(c.monthly) || 0),
+                task: String(c.task || c.tasks || ""),
+                comment: String(c.comment || c.comments || "")
               }))
             : base.sales.clients
         },
@@ -1054,7 +1146,16 @@
                 done: Boolean(t.done)
               }))
             : base.dept2.tasks
-        }
+        },
+        notes: Array.isArray(raw.notes)
+          ? raw.notes.map((n, idx) => ({
+              id: String(n.id || `n-${Date.now()}-${idx}`),
+              title: String(n.title || ""),
+              body: String(n.body || n.text || ""),
+              done: Boolean(n.done),
+              updatedAt: typeof n.updatedAt === "string" ? n.updatedAt : new Date().toISOString()
+            }))
+          : []
       };
     }
 
@@ -1432,6 +1533,10 @@
                 <input type="number" class="client-mon-input" min="0" step="500"
                   placeholder="Ведение: ${baseMonthly}" value="${c.monthly ?? ""}" />
               </div>
+              <div class="client-notes-grid">
+                <input type="text" class="client-task-input" placeholder="Задачи по клиенту..." value="${escapeAttr(c.task || "")}" />
+                <input type="text" class="client-comment-input" placeholder="Комментарии по клиенту..." value="${escapeAttr(c.comment || "")}" />
+              </div>
             </div>
           `;
         })
@@ -1588,12 +1693,45 @@
         .join("");
     }
 
+    function renderNotes() {
+      const notes = state.notes || [];
+      const counterEl = document.getElementById("notesCounter");
+      if (counterEl) counterEl.textContent = String(notes.length);
+
+      const listEl = document.getElementById("notesList");
+      if (!listEl) return;
+
+      if (!notes.length) {
+        listEl.innerHTML = `<div class="empty" style="grid-column: 1 / -1;">Заметок пока нет. Напишите первую выше.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = notes
+        .map(
+          (n) => `
+            <div class="note-card" data-note-id="${escapeAttr(n.id)}">
+              <div class="note-card-head">
+                <label class="check-label" style="font-size: 12px; font-weight: 500;">
+                  <input type="checkbox" class="note-done-check" ${n.done ? "checked" : ""} />
+                  <span class="${n.done ? "done-text" : ""}">Готово</span>
+                </label>
+                <button type="button" class="del-btn note-del" title="Удалить заметку">✕</button>
+              </div>
+              <input type="text" class="note-title-edit" value="${escapeAttr(n.title)}" placeholder="Заголовок..." />
+              <textarea class="note-body-edit" placeholder="Текст заметки...">${escapeHtml(n.body)}</textarea>
+            </div>
+          `
+        )
+        .join("");
+    }
+
     function renderAll() {
       applyTheme();
       renderLeads();
       renderSales();
       renderDept1();
       renderDept2();
+      renderNotes();
     }
 
     function escapeHtml(str) {
@@ -2012,24 +2150,32 @@
       const nameEl = document.getElementById("clientNameInput");
       const oneEl = document.getElementById("clientOneTimeInput");
       const monEl = document.getElementById("clientMonthlyInput");
+      const taskEl = document.getElementById("clientTaskInput");
+      const commentEl = document.getElementById("clientCommentInput");
       if (!nameEl) return;
       const name = nameEl.value.trim();
       if (!name) return;
 
       const oneTime = !oneEl || oneEl.value.trim() === "" ? null : Math.max(0, Number(oneEl.value) || 0);
       const monthly = !monEl || monEl.value.trim() === "" ? null : Math.max(0, Number(monEl.value) || 0);
+      const task = taskEl ? taskEl.value.trim() : "";
+      const comment = commentEl ? commentEl.value.trim() : "";
 
       state.sales.clients.unshift({
         id: `c-${Date.now()}`,
         name,
         done: false,
         oneTime,
-        monthly
+        monthly,
+        task,
+        comment
       });
 
       nameEl.value = "";
       if (oneEl) oneEl.value = "";
       if (monEl) monEl.value = "";
+      if (taskEl) taskEl.value = "";
+      if (commentEl) commentEl.value = "";
       renderSales();
       saveState();
     }
@@ -2056,6 +2202,12 @@
       } else if (e.target.classList.contains("client-mon-input")) {
         client.monthly = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
         renderSales();
+        saveState();
+      } else if (e.target.classList.contains("client-task-input")) {
+        client.task = e.target.value;
+        saveState();
+      } else if (e.target.classList.contains("client-comment-input")) {
+        client.comment = e.target.value;
         saveState();
       }
     });
@@ -2197,6 +2349,72 @@
       if (!item) return;
       state.dept2.tasks = state.dept2.tasks.filter((t) => t.id !== item.dataset.taskId);
       renderDept2();
+      saveState();
+    });
+
+    function addNote() {
+      const titleEl = document.getElementById("noteTitleInput");
+      const bodyEl = document.getElementById("noteBodyInput");
+      const title = titleEl ? titleEl.value.trim() : "";
+      const body = bodyEl ? bodyEl.value.trim() : "";
+      if (!title && !body) {
+        showNotice("Введите заголовок или текст заметки.");
+        return;
+      }
+
+      if (!Array.isArray(state.notes)) {
+        state.notes = [];
+      }
+      state.notes.unshift({
+        id: `n-${Date.now()}`,
+        title,
+        body,
+        done: false,
+        updatedAt: new Date().toISOString()
+      });
+
+      if (titleEl) titleEl.value = "";
+      if (bodyEl) bodyEl.value = "";
+      renderNotes();
+      saveState();
+    }
+
+    bindEventSafe("addNoteBtn", "click", addNote);
+    bindEventSafe("noteTitleInput", "keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addNote();
+      }
+    });
+
+    bindEventSafe("notesList", "change", (e) => {
+      const card = e.target.closest(".note-card");
+      if (!card) return;
+      const note = (state.notes || []).find((n) => n.id === card.dataset.noteId);
+      if (!note) return;
+
+      if (e.target.classList.contains("note-done-check")) {
+        note.done = e.target.checked;
+        note.updatedAt = new Date().toISOString();
+        renderNotes();
+        saveState();
+      } else if (e.target.classList.contains("note-title-edit")) {
+        note.title = e.target.value;
+        note.updatedAt = new Date().toISOString();
+        saveState();
+      } else if (e.target.classList.contains("note-body-edit")) {
+        note.body = e.target.value;
+        note.updatedAt = new Date().toISOString();
+        saveState();
+      }
+    });
+
+    bindEventSafe("notesList", "click", (e) => {
+      if (!e.target.classList.contains("note-del")) return;
+      const card = e.target.closest(".note-card");
+      if (!card) return;
+      state.notes = (state.notes || []).filter((n) => n.id !== card.dataset.noteId);
+      renderNotes();
       saveState();
     });
 
