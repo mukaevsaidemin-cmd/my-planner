@@ -558,6 +558,32 @@
       font-size: 12px;
     }
 
+    .phone-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .call-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 9px;
+      background: var(--accent-soft);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .call-link:hover {
+      opacity: 0.88;
+    }
+
     /* Единая строка управления в самом низу страницы */
     .bottom-bar {
       display: flex;
@@ -782,20 +808,20 @@
           <h2 class="section-title">Контакты</h2>
           <span class="counter" id="leadsCounter">0 / 0</span>
         </div>
-        <p class="subtitle">ФИО, компания, контакты, статус звонка, комментарии и задача — какие услуги, продукты</p>
+        <p class="subtitle">ФИО, компания, контакты со звонком через iPhone/ПК, статус звонка, комментарии и задача</p>
 
         <div class="inputs-row five">
           <input type="text" id="leadFioInput" placeholder="ФИО" />
           <input type="text" id="leadCompanyInput" placeholder="Компания" />
-          <input type="text" id="leadPhoneInput" placeholder="Контакты" />
+          <input type="text" id="leadPhoneInput" placeholder="Телефон (+7...)" />
           <input type="text" id="leadCommentInput" placeholder="Комментарии" />
           <input type="text" id="leadTaskInput" placeholder="Задача - какие услуги, продукты" />
         </div>
 
         <div class="lead-toolbar">
           <button type="button" class="primary" id="addLeadBtn">+ Добавить строку</button>
-          <button type="button" id="importLeadsFileBtn">Загрузить файл (CSV/TXT/JSON)</button>
-          <input type="file" id="leadsFileInput" accept=".csv,.txt,.json,text/csv,text/plain,application/json" hidden />
+          <button type="button" id="importLeadsFileBtn">Загрузить файл (CSV/TXT/JSON/VCF)</button>
+          <input type="file" id="leadsFileInput" accept=".csv,.txt,.json,.vcf,text/csv,text/plain,application/json,text/vcard" hidden />
           <button type="button" id="toggleBulkLeadsBtn">Вставить списком</button>
           <input type="text" id="leadSearchInput" placeholder="Поиск по таблице..." style="max-width: 220px;" />
           <select id="leadFilterSelect" style="max-width: 220px;">
@@ -823,7 +849,7 @@
               <tr>
                 <th>ФИО</th>
                 <th>Компания</th>
-                <th>Контакты</th>
+                <th>Контакты и звонок</th>
                 <th>Статус</th>
                 <th>Комментарии</th>
                 <th>Задача - какие услуги, продукты</th>
@@ -1238,6 +1264,20 @@
       if (btn) btn.textContent = state.theme === "dark" ? "🌙" : "🙂";
     }
 
+    function extractTelHref(rawContact) {
+      const text = String(rawContact || "");
+      const matches = text.match(/\+?\d[\d\s().-]{5,}\d/g);
+      if (!matches || !matches.length) return "";
+      let digits = matches[0].replace(/[^\d+]/g, "");
+      if (digits.startsWith("8") && digits.replace(/\D/g, "").length === 11) {
+        digits = "+7" + digits.slice(1);
+      } else if (!digits.startsWith("+") && digits.replace(/\D/g, "").length === 11 && digits.startsWith("7")) {
+        digits = "+" + digits;
+      }
+      if (digits.replace(/\D/g, "").length < 6) return "";
+      return `tel:${digits}`;
+    }
+
     function renderLeads() {
       const { items, filterBy, sortBy } = state.leads;
       const calledCount = items.filter((l) => l.called).length;
@@ -1284,12 +1324,22 @@
       }
 
       tbody.innerHTML = list
-        .map(
-          (l) => `
+        .map((l) => {
+          const telHref = extractTelHref(l.phone);
+          const callLinkHtml = telHref
+            ? `<a class="call-link" href="${escapeAttr(telHref)}" title="Позвонить через связанный телефон">Позвонить</a>`
+            : "";
+
+          return `
             <tr class="lead-row" data-lead-id="${escapeAttr(l.id)}">
               <td><input type="text" class="lead-fio-edit" value="${escapeAttr(l.fio)}" placeholder="ФИО" /></td>
               <td><input type="text" class="lead-company-edit" value="${escapeAttr(l.company)}" placeholder="Компания" /></td>
-              <td><input type="text" class="lead-phone-edit" value="${escapeAttr(l.phone)}" placeholder="Контакты" /></td>
+              <td>
+                <div class="phone-cell">
+                  <input type="text" class="lead-phone-edit" value="${escapeAttr(l.phone)}" placeholder="Телефон (+7...)" />
+                  ${callLinkHtml}
+                </div>
+              </td>
               <td>
                 <label class="check-label" style="font-size: 12px; font-weight: 500;">
                   <input type="checkbox" class="lead-called-check" ${l.called ? "checked" : ""} />
@@ -1300,8 +1350,8 @@
               <td><input type="text" class="lead-task-input" value="${escapeAttr(l.task)}" placeholder="Какие услуги, продукты..." /></td>
               <td style="text-align: center;"><button type="button" class="del-btn lead-del" title="Удалить">✕</button></td>
             </tr>
-          `
-        )
+          `;
+        })
         .join("");
     }
 
@@ -1582,6 +1632,46 @@
       const text = String(rawText || "").trim();
       if (!text) return [];
 
+      if (/BEGIN:VCARD/i.test(text)) {
+        const blocks = text.split(/END:VCARD/i).filter((b) => /BEGIN:VCARD/i.test(b));
+        return blocks
+          .map((block, i) => {
+            const unfolded = block.replace(/\r?\n[ \t]+/g, "");
+            const getField = (prefix) => {
+              const line = unfolded
+                .split(/\r?\n/)
+                .find((l) => new RegExp(`^${prefix}(:|;)`, "i").test(l.trim()));
+              if (!line) return "";
+              const idx = line.indexOf(":");
+              return idx === -1 ? "" : line.slice(idx + 1).replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\n/gi, " ").trim();
+            };
+
+            const fn = getField("FN");
+            const nParts = getField("N").split(";").map((s) => s.trim()).filter(Boolean);
+            let fio = fn || [nParts[1], nParts[0], nParts[2]].filter(Boolean).join(" ");
+            const orgRaw = getField("ORG");
+            const company = orgRaw.split(";")[0]?.trim() || "";
+            const tel = getField("TEL");
+            const email = getField("EMAIL");
+            let phone = [tel, email].filter(Boolean).join(" · ");
+
+            if (!phone && /\+?\d[\d\s().-]{5,}\d/.test(fio)) {
+              const m = fio.match(/\+?\d[\d\s().-]{5,}\d/);
+              if (m) {
+                phone = m[0].trim();
+                fio = fio.replace(m[0], "").replace(/[-–—:|]+/g, " ").trim();
+              }
+            }
+
+            const comment = getField("NOTE");
+            const task = getField("TITLE") || getField("ROLE");
+
+            if (!fio && !company && !phone && !comment && !task) return null;
+            return createLeadRecord(fio, company, phone, comment, task, false, i);
+          })
+          .filter(Boolean);
+      }
+
       if (text.startsWith("[") || text.startsWith("{")) {
         try {
           const parsed = JSON.parse(text);
@@ -1594,7 +1684,13 @@
                 : [];
           return arr
             .map((item, i) => {
-              if (typeof item === "string") return createLeadRecord(item, "", "", "", "", false, i);
+              if (typeof item === "string") {
+                const m = item.match(/\+?\d[\d\s().-]{5,}\d/);
+                if (m) {
+                  return createLeadRecord(item.replace(m[0], "").replace(/[-–—:|]+/g, " ").trim(), "", m[0].trim(), "", "", false, i);
+                }
+                return createLeadRecord(item, "", "", "", "", false, i);
+              }
               if (item && typeof item === "object") {
                 const fio = item.fio || item.name || item.title || item.full_name || "";
                 const company = item.company || item.niche || item.organization || "";
@@ -1623,6 +1719,18 @@
         }
         const sep = line.includes("|") ? "|" : line.includes(";") ? ";" : line.includes("\t") ? "\t" : ",";
         const parts = line.split(sep).map((p) => p.trim().replace(/^["']|["']$/g, ""));
+
+        if (parts.length === 1) {
+          const single = parts[0] || "";
+          const phoneMatch = single.match(/\+?\d[\d\s().-]{5,}\d/);
+          if (phoneMatch) {
+            const phone = phoneMatch[0].trim();
+            const fio = single.replace(phoneMatch[0], "").replace(/[-–—:|]+/g, " ").trim();
+            result.push(createLeadRecord(fio, "", phone, "", "", false, i));
+            return;
+          }
+        }
+
         const fio = parts[0] || "";
         const company = parts[1] || "";
         const phone = parts[2] || "";
@@ -1680,7 +1788,6 @@
       if (backdrop) backdrop.style.display = "none";
     });
 
-    // Обработчики входа и выхода
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
       loginForm.addEventListener("submit", async (e) => {
@@ -1733,7 +1840,6 @@
       setSyncStatus("требуется вход");
     });
 
-    // Обработчики раздела «Контакты»
     bindEventSafe("addLeadBtn", "click", addLeadSingle);
     ["leadFioInput", "leadCompanyInput", "leadPhoneInput", "leadCommentInput", "leadTaskInput"].forEach((id) => {
       bindEventSafe(id, "keydown", (e) => {
@@ -1823,6 +1929,7 @@
         saveState();
       } else if (e.target.classList.contains("lead-phone-edit")) {
         lead.phone = e.target.value;
+        renderLeads();
         saveState();
       } else if (e.target.classList.contains("lead-comment-input")) {
         lead.comment = e.target.value;
@@ -1842,7 +1949,6 @@
       saveState();
     });
 
-    // Обработчики нижней строки управления
     bindEventSafe("themeBtn", "click", () => {
       state.theme = state.theme === "dark" ? "light" : "dark";
       applyTheme();
@@ -1884,7 +1990,6 @@
       reader.readAsText(file);
     });
 
-    // Обработчики колонки «1. План продаж»
     bindEventSafe("goalInput", "input", (e) => {
       state.sales.goalClients = Math.max(1, Number(e.target.value) || 1);
       renderSales();
@@ -1964,7 +2069,6 @@
       saveState();
     });
 
-    // Обработчики колонки «2. Отдел 1: Услуги и ниши»
     bindEventSafe("dept1Tabs", "click", (e) => {
       const btn = e.target.closest(".tab-btn");
       if (!btn) return;
@@ -2055,7 +2159,6 @@
       saveState();
     });
 
-    // Обработчики колонки «3. Отдел 2: Свой MVP»
     function addDept2Task() {
       const input = document.getElementById("dept2TaskInput");
       if (!input) return;
@@ -2097,7 +2200,6 @@
       saveState();
     });
 
-    // Инициализация интерфейса, сессии и синхронизации
     async function initApp() {
       renderAll();
 
