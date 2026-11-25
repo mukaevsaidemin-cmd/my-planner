@@ -396,8 +396,9 @@
       flex-shrink: 0;
     }
 
+    /* Без зачёркивания текста */
     .done-text {
-      text-decoration: line-through;
+      text-decoration: none;
       color: var(--muted);
     }
 
@@ -1077,33 +1078,47 @@
         ],
         tasks: [
           {
-            id: "d1-1",
-            title: "Собрать типового ИИ-ассистента для первичной квалификации заявок",
-            mode: "specialists",
-            category: "Риэлторы",
+            id: "d1-7",
+            title: "7. Составить прайс-лист и чек-листы",
+            mode: "general",
+            category: "Общие задачи",
             done: false
           },
           {
-            id: "d1-2",
-            title: "Подготовить шаблон бота для приема заказов и статуса доставки",
-            mode: "industries",
-            category: "Общепит и доставка",
+            id: "d1-8",
+            title: "8. Связаться со специалистами по автоматизации и учёту",
+            mode: "general",
+            category: "Общие задачи",
             done: false
           },
           {
-            id: "d1-3",
-            title: "Описать связку CRM + МойСклад / 1С для учета остатков и сделок",
-            mode: "industries",
-            category: "Склад, опт и розница",
+            id: "d1-9",
+            title: "9. Связаться со специалистами по продажам",
+            mode: "general",
+            category: "Общие задачи",
+            done: false
+          },
+          {
+            id: "d1-10",
+            title: "10. Связаться со специалистами по продвижению",
+            mode: "general",
+            category: "Общие задачи",
+            done: false
+          },
+          {
+            id: "d1-11",
+            title: "11. Начать оказывать услуги и продавать, чтобы как минимум на 150.000 рублей в месяц выйти на ведении + разово еще зарабатывать",
+            mode: "general",
+            category: "Общие задачи",
             done: false
           }
         ]
       },
       dept2: {
         tasks: [
-          { id: "d2-1", title: "Спроектировать единую модель данных (клиент, сделка, задача, товар, платеж)", done: false },
-          { id: "d2-2", title: "Собрать базовый интерфейс задач, календаря и заметок", done: false },
-          { id: "d2-3", title: "Подключить единый поток сообщений и ИИ-ассистента", done: false }
+          { id: "d2-1", title: "1. Разобраться с автоматизацией, учётом", done: false },
+          { id: "d2-2", title: "2. Разобраться с впн, ии и т.д.", done: false },
+          { id: "d2-3", title: "3. Начать делать свои продукты, когда поймешь каким образом делать продукты лучше", done: false }
         ]
       }
     };
@@ -1449,7 +1464,7 @@
         return;
       }
 
-      state.sales.clients.unshift({
+      state.sales.clients.push({
         id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         name: displayName,
         company: lead.company || "",
@@ -1731,8 +1746,26 @@
       }
     }
 
-    function renderDept1() {
+    function getFilteredDept1Tasks() {
       const { viewMode, selectedCategory, tasks } = state.dept1;
+      return tasks.filter((t) => {
+        if (viewMode === "all") return true;
+        if (viewMode === "general") return t.mode === "general";
+        if (t.mode !== viewMode) return false;
+        if (selectedCategory !== "Все" && t.category !== selectedCategory) return false;
+        return true;
+      });
+    }
+
+    function updateDept1CounterOnly() {
+      const filteredTasks = getFilteredDept1Tasks();
+      const doneCount = filteredTasks.filter((t) => t.done).length;
+      const counterEl = document.getElementById("dept1Counter");
+      if (counterEl) counterEl.textContent = `${doneCount}/${filteredTasks.length}`;
+    }
+
+    function renderDept1() {
+      const { viewMode, selectedCategory } = state.dept1;
 
       document.querySelectorAll("#dept1Tabs .tab-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.mode === viewMode);
@@ -1780,17 +1813,8 @@
       }
       populateSubcatSelect();
 
-      const filteredTasks = tasks.filter((t) => {
-        if (viewMode === "all") return true;
-        if (viewMode === "general") return t.mode === "general";
-        if (t.mode !== viewMode) return false;
-        if (state.dept1.selectedCategory !== "Все" && t.category !== state.dept1.selectedCategory) return false;
-        return true;
-      });
-
-      const doneCount = filteredTasks.filter((t) => t.done).length;
-      const counterEl = document.getElementById("dept1Counter");
-      if (counterEl) counterEl.textContent = `${doneCount}/${filteredTasks.length}`;
+      const filteredTasks = getFilteredDept1Tasks();
+      updateDept1CounterOnly();
 
       const listEl = document.getElementById("dept1TaskList");
       if (!listEl) return;
@@ -1811,7 +1835,7 @@
               <div class="task-row">
                 <label class="check-label">
                   <input type="checkbox" class="d1-check" ${t.done ? "checked" : ""} />
-                  <span class="${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
+                  <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
                 </label>
                 <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
               </div>
@@ -1822,11 +1846,16 @@
         .join("");
     }
 
-    function renderDept2() {
+    function updateDept2CounterOnly() {
       const tasks = state.dept2.tasks;
       const doneCount = tasks.filter((t) => t.done).length;
       const counterEl = document.getElementById("dept2Counter");
       if (counterEl) counterEl.textContent = `${doneCount}/${tasks.length}`;
+    }
+
+    function renderDept2() {
+      const tasks = state.dept2.tasks;
+      updateDept2CounterOnly();
 
       const listEl = document.getElementById("dept2TaskList");
       if (!listEl) return;
@@ -1843,7 +1872,7 @@
               <div class="task-row">
                 <label class="check-label">
                   <input type="checkbox" class="d2-check" ${t.done ? "checked" : ""} />
-                  <span class="${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
+                  <span class="task-title-text ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</span>
                 </label>
                 <button type="button" class="del-btn d2-del" title="Удалить">✕</button>
               </div>
@@ -2037,7 +2066,7 @@
         return;
       }
 
-      state.leads.items.unshift(createLeadRecord(fio, company, phone, callNote, comment, task, "not_called", 0));
+      state.leads.items.push(createLeadRecord(fio, company, phone, callNote, comment, task, "not_called", 0));
       currentLeadsPage = 1;
 
       if (fioEl) fioEl.value = "";
@@ -2159,7 +2188,7 @@
         showNotice("Введите хотя бы одну строку с контактом.");
         return;
       }
-      state.leads.items.unshift(...parsed);
+      state.leads.items.push(...parsed);
       currentLeadsPage = 1;
       ta.value = "";
       const box = document.getElementById("bulkLeadsBox");
@@ -2183,7 +2212,7 @@
         if (!parsed.length) {
           showNotice("В файле не найдено контактов для загрузки.");
         } else {
-          state.leads.items.unshift(...parsed);
+          state.leads.items.push(...parsed);
           currentLeadsPage = 1;
           renderLeads();
           saveState(true, 900);
@@ -2368,7 +2397,7 @@
       const oneTime = !oneEl || oneEl.value.trim() === "" ? null : Math.max(0, Number(oneEl.value) || 0);
       const monthly = !monEl || monEl.value.trim() === "" ? null : Math.max(0, Number(monEl.value) || 0);
 
-      state.sales.clients.unshift({
+      state.sales.clients.push({
         id: `c-${Date.now()}`,
         name,
         company: companyEl ? companyEl.value.trim() : "",
@@ -2432,7 +2461,9 @@
 
       if (e.target.classList.contains("client-check") && e.type === "change") {
         client.done = e.target.checked;
-        renderSales();
+        const labelSpan = item.querySelector(".check-label span");
+        if (labelSpan) labelSpan.classList.toggle("done-text", client.done);
+        updateSalesKpiLabelsOnly();
         saveState(true, 600);
       } else if (e.target.classList.contains("client-one-input")) {
         client.oneTime = e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0);
@@ -2522,7 +2553,7 @@
         ? "Общие задачи"
         : (document.getElementById("taskSubcatSelect")?.value || "Общее");
 
-      state.dept1.tasks.unshift({
+      state.dept1.tasks.push({
         id: `d1-${Date.now()}`,
         title,
         mode,
@@ -2546,7 +2577,9 @@
       const task = state.dept1.tasks.find((t) => t.id === item?.dataset.taskId);
       if (!task) return;
       task.done = e.target.checked;
-      renderDept1();
+      const titleSpan = item.querySelector(".task-title-text");
+      if (titleSpan) titleSpan.classList.toggle("done-text", task.done);
+      updateDept1CounterOnly();
       saveState();
     });
 
@@ -2565,7 +2598,7 @@
       const title = input.value.trim();
       if (!title) return;
 
-      state.dept2.tasks.unshift({
+      state.dept2.tasks.push({
         id: `d2-${Date.now()}`,
         title,
         done: false
@@ -2587,7 +2620,9 @@
       const task = state.dept2.tasks.find((t) => t.id === item?.dataset.taskId);
       if (!task) return;
       task.done = e.target.checked;
-      renderDept2();
+      const titleSpan = item.querySelector(".task-title-text");
+      if (titleSpan) titleSpan.classList.toggle("done-text", task.done);
+      updateDept2CounterOnly();
       saveState();
     });
 
