@@ -854,7 +854,7 @@
             <button type="button" class="tab-btn active" data-mode="all">Все</button>
             <button type="button" class="tab-btn" data-mode="specialists">Специалисты</button>
             <button type="button" class="tab-btn" data-mode="industries">Отрасли бизнеса</button>
-            <button type="button" class="tab-btn" data-mode="general">Общие</button>
+            <button type="button" class="tab-btn" data-mode="general">Общие задачи</button>
           </div>
 
           <div class="cat-box" id="catBox">
@@ -869,11 +869,11 @@
             </div>
           </div>
 
-          <div class="inputs-row two">
+          <div class="inputs-row two" id="dept1SelectRow">
             <select id="taskModeSelect">
               <option value="specialists">Специалисты</option>
               <option value="industries">Отрасли бизнеса</option>
-              <option value="general">Общие</option>
+              <option value="general">Общие задачи</option>
             </select>
             <select id="taskSubcatSelect"></select>
           </div>
@@ -1075,9 +1075,6 @@
           "Недвижимость",
           "Онлайн-школы"
         ],
-        general: [
-          "Общие для специалистов"
-        ],
         tasks: [
           {
             id: "d1-1",
@@ -1206,15 +1203,12 @@
           industries: Array.isArray(raw.dept1?.industries) && raw.dept1.industries.length
             ? raw.dept1.industries.map(String)
             : base.dept1.industries,
-          general: Array.isArray(raw.dept1?.general) && raw.dept1.general.length
-            ? raw.dept1.general.map(String)
-            : base.dept1.general,
           tasks: Array.isArray(raw.dept1?.tasks)
             ? raw.dept1.tasks.map((t, idx) => ({
                 id: String(t.id || `d1-${Date.now()}-${idx}`),
                 title: String(t.title || ""),
                 mode: ["industries", "general"].includes(t.mode) ? t.mode : "specialists",
-                category: String(t.category || "Общее"),
+                category: t.mode === "general" ? "Общие задачи" : String(t.category || "Общее"),
                 done: Boolean(t.done)
               }))
             : base.dept1.tasks
@@ -1700,18 +1694,26 @@
       }
     }
 
-    function getDept1CategoriesByMode(mode) {
-      if (mode === "industries") return state.dept1.industries;
-      if (mode === "general") return state.dept1.general;
-      return state.dept1.specialists;
-    }
-
     function populateSubcatSelect() {
       const modeSelect = document.getElementById("taskModeSelect");
       const subcatSelect = document.getElementById("taskSubcatSelect");
+      const selectRow = document.getElementById("dept1SelectRow");
       if (!modeSelect || !subcatSelect) return;
 
-      const items = getDept1CategoriesByMode(modeSelect.value);
+      if (modeSelect.value === "general") {
+        subcatSelect.style.display = "none";
+        if (selectRow) selectRow.style.gridTemplateColumns = "1fr";
+        subcatSelect.innerHTML = `<option value="Общие задачи">Общие задачи</option>`;
+        subcatSelect.value = "Общие задачи";
+        return;
+      }
+
+      subcatSelect.style.display = "block";
+      if (selectRow) selectRow.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+
+      const items = modeSelect.value === "industries"
+        ? state.dept1.industries
+        : state.dept1.specialists;
       const current = subcatSelect.value;
 
       subcatSelect.innerHTML = items
@@ -1741,25 +1743,20 @@
       const newCatInput = document.getElementById("newCatInput");
 
       if (catBox && chipList && newCatInput) {
-        if (viewMode === "all") {
+        if (viewMode === "all" || viewMode === "general") {
           catBox.style.display = "none";
         } else {
           catBox.style.display = "block";
           const catBoxTitle = document.getElementById("catBoxTitle");
           if (catBoxTitle) {
-            if (viewMode === "specialists") catBoxTitle.textContent = "Специалисты:";
-            else if (viewMode === "industries") catBoxTitle.textContent = "Отрасли бизнеса:";
-            else catBoxTitle.textContent = "Общие (специалисты и компании):";
+            catBoxTitle.textContent = viewMode === "specialists" ? "Специалисты:" : "Отрасли бизнеса:";
           }
-          if (viewMode === "specialists") {
-            newCatInput.placeholder = "Новый специалист (напр., Врачи, Логисты)...";
-          } else if (viewMode === "industries") {
-            newCatInput.placeholder = "Новая отрасль (напр., Клиники, Авто)...";
-          } else {
-            newCatInput.placeholder = "Новая общая категория (напр., Базовые боты, CRM)...";
-          }
+          newCatInput.placeholder =
+            viewMode === "specialists"
+              ? "Новый специалист (напр., Врачи, Логисты)..."
+              : "Новая отрасль (напр., Клиники, Авто)...";
 
-          const pool = getDept1CategoriesByMode(viewMode);
+          const pool = viewMode === "specialists" ? state.dept1.specialists : state.dept1.industries;
           const chips = ["Все", ...pool];
           if (!chips.includes(selectedCategory)) {
             state.dept1.selectedCategory = "Все";
@@ -1785,6 +1782,7 @@
 
       const filteredTasks = tasks.filter((t) => {
         if (viewMode === "all") return true;
+        if (viewMode === "general") return t.mode === "general";
         if (t.mode !== viewMode) return false;
         if (state.dept1.selectedCategory !== "Все" && t.category !== state.dept1.selectedCategory) return false;
         return true;
@@ -1804,9 +1802,10 @@
 
       listEl.innerHTML = filteredTasks
         .map((t) => {
-          let scopeLabel = "Специалисты";
-          if (t.mode === "industries") scopeLabel = "Отрасли бизнеса";
-          else if (t.mode === "general") scopeLabel = "Общие";
+          const metaText =
+            t.mode === "general"
+              ? "Общие задачи"
+              : `${t.mode === "industries" ? "Отрасли бизнеса" : "Специалисты"} · ${t.category}`;
           return `
             <div class="task-item" data-task-id="${escapeAttr(t.id)}">
               <div class="task-row">
@@ -1816,7 +1815,7 @@
                 </label>
                 <button type="button" class="del-btn d1-del" title="Удалить">✕</button>
               </div>
-              <div class="task-meta">${escapeHtml(scopeLabel)} · ${escapeHtml(t.category)}</div>
+              <div class="task-meta">${escapeHtml(metaText)}</div>
             </div>
           `;
         })
@@ -2401,7 +2400,7 @@
     });
 
     function updateSalesKpiLabelsOnly() {
-      const { baseOneTime, baseMonthly, clients } = state.sales;
+      const { clients } = state.sales;
       const doneClients = clients.filter((c) => c.done);
       let actualOneTime = 0;
       let actualMonthly = 0;
@@ -2496,7 +2495,7 @@
       if (!input) return;
       const val = input.value.trim();
       if (!val) return;
-      const targetList = getDept1CategoriesByMode(state.dept1.viewMode);
+      const targetList = state.dept1.viewMode === "industries" ? state.dept1.industries : state.dept1.specialists;
       if (!targetList.includes(val)) {
         targetList.push(val);
       }
@@ -2519,7 +2518,9 @@
       const title = input.value.trim();
       if (!title) return;
       const mode = document.getElementById("taskModeSelect")?.value || "specialists";
-      const category = document.getElementById("taskSubcatSelect")?.value || "Общее";
+      const category = mode === "general"
+        ? "Общие задачи"
+        : (document.getElementById("taskSubcatSelect")?.value || "Общее");
 
       state.dept1.tasks.unshift({
         id: `d1-${Date.now()}`,
